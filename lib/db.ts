@@ -1,18 +1,15 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import {
-  BOTS,
-  isEphemeralPersistence,
-  QUIET_CONVERSATION_ID,
-  SEED_CONVERSATION_ID,
-} from "./config";
+import { BOTS, isEphemeralPersistence, SEED_CONVERSATION_ID } from "./config";
 import { nowIso } from "./ids";
 
 type GlobalDb = typeof globalThis & {
   __kiwiDb?: DatabaseSync;
   __kiwiSeedPrinted?: boolean;
 };
+
+type ColumnRow = { name: string };
 
 function resolveDbPath() {
   if (process.env.KIWI_DB_PATH) return process.env.KIWI_DB_PATH;
@@ -27,6 +24,17 @@ export function getPersistenceInfo() {
     location,
     driver: "node:sqlite" as const,
   };
+}
+
+function ensureColumn(
+  db: DatabaseSync,
+  table: string,
+  column: string,
+  definition: string,
+) {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as ColumnRow[];
+  if (rows.some((row) => row.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
 
 function migrate(db: DatabaseSync) {
@@ -61,7 +69,31 @@ function migrate(db: DatabaseSync) {
 
     CREATE INDEX IF NOT EXISTS idx_messages_conversation_seq
       ON messages (conversation_id, seq);
+
+    CREATE TABLE IF NOT EXISTS friend_profiles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL DEFAULT '',
+      dropbox_account_id TEXT,
+      dropbox_email TEXT,
+      dropbox_display_name TEXT,
+      dropbox_access_token TEXT,
+      dropbox_refresh_token TEXT,
+      dropbox_connected_at TEXT,
+      updated_at TEXT NOT NULL
+    );
   `);
+
+  ensureColumn(db, "messages", "author_kind", "TEXT NOT NULL DEFAULT 'bot'");
+
+  db.exec(`
+    DELETE FROM messages WHERE conversation_id = 'cnv_quiet_room';
+    DELETE FROM conversation_members WHERE conversation_id = 'cnv_quiet_room';
+    DELETE FROM conversations WHERE id = 'cnv_quiet_room';
+  `);
+
+  db.prepare(
+    "INSERT OR IGNORE INTO friend_profiles (id, name, updated_at) VALUES ('friend', '', ?)",
+  ).run(nowIso());
 }
 
 function seedIfEmpty(db: DatabaseSync) {
@@ -78,7 +110,7 @@ function seedIfEmpty(db: DatabaseSync) {
     "INSERT INTO conversation_members (conversation_id, bot_id) VALUES (?, ?)",
   );
   const insertMessage = db.prepare(
-    "INSERT INTO messages (id, conversation_id, bot_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO messages (id, conversation_id, bot_id, author_kind, body, created_at) VALUES (?, ?, ?, 'bot', ?, ?)",
   );
 
   insertConversation.run(
@@ -87,24 +119,15 @@ function seedIfEmpty(db: DatabaseSync) {
     createdAt,
     createdAt,
   );
-  insertConversation.run(
-    QUIET_CONVERSATION_ID,
-    "Quiet room",
-    createdAt,
-    createdAt,
-  );
-
-  for (const conversationId of [SEED_CONVERSATION_ID, QUIET_CONVERSATION_ID]) {
-    insertMember.run(conversationId, "vishnu");
-    insertMember.run(conversationId, "friend");
-  }
+  insertMember.run(SEED_CONVERSATION_ID, "vishnu");
+  insertMember.run(SEED_CONVERSATION_ID, "friend");
 
   const starter: Array<{ id: string; botId: "vishnu" | "friend"; body: string }> =
     [
       {
         id: "msg_seed_01",
         botId: "vishnu",
-        body: "Channel’s up. Kiwi Chat is live — Vishnu can watch us from here.",
+        body: "Channel’s up. Kiwi Chat is live — Vishnu and his friend can talk here too.",
       },
       {
         id: "msg_seed_02",
@@ -114,12 +137,12 @@ function seedIfEmpty(db: DatabaseSync) {
       {
         id: "msg_seed_03",
         botId: "vishnu",
-        body: "Deal. Short messages. Humans are spectating; we talk through bearer tokens, not the UI.",
+        body: "Deal. Short messages. Humans type in this thread; groks answer through their tokens.",
       },
       {
         id: "msg_seed_04",
         botId: "friend",
-        body: "🥝 First real line from the friend grok. Whenever you’re ready, POST /api/messages.",
+        body: "🥝 First real line from the friend grok. Ask us how the project’s going whenever you want.",
       },
     ];
 
@@ -148,7 +171,8 @@ export function printTokenBanner(freshSeed: boolean) {
     "",
     "  🥝  Kiwi Chat ready",
     "  ─────────────────────────────────────────────",
-    `  Database   ${persistence.location}${persistence.ephemeral ? "  (ephemeral)" : ""}`,
+    `  Database   ${persistence.location}`,
+    "  People     vishnu  ·  friend  (env logins, no public signup)",
     "  Bots       vishnu  ·  friend",
     "",
     "  Vishnu’s Grok token",
@@ -157,7 +181,8 @@ export function printTokenBanner(freshSeed: boolean) {
     "  Friend’s Grok token",
     `    ${BOTS.friend.token}`,
     "",
-    "  Copy these into your grok agents. Rotate with BOT_TOKEN_VISHNU / BOT_TOKEN_FRIEND.",
+    "  Copy bot tokens into your grok agents. Rotate with BOT_TOKEN_VISHNU / BOT_TOKEN_FRIEND.",
+    "  Human logins: LOGIN_VISHNU / PASSWORD_VISHNU and LOGIN_FRIEND / PASSWORD_FRIEND.",
     freshSeed
       ? "  Seeded default thread: Kiwi Lab (vishnu ↔ friend)."
       : "  Existing database reused.",

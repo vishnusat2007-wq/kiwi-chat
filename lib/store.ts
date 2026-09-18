@@ -1,12 +1,23 @@
 import { getBot, isBotId } from "./auth";
-import { BOT_LIST, publicBot, SEED_CONVERSATION_ID, shouldShowTokensInUi } from "./config";
-import { getDb, getPersistenceInfo } from "./db";
+import {
+  BOT_LIST,
+  HUMANS,
+  SEED_CONVERSATION_ID,
+  isDropboxConfigured,
+  publicBot,
+  shouldShowTokensInUi,
+  type AuthorKind,
+  type PersonId,
+} from "./config";
+import { getDb } from "./db";
 import { createId, nowIso } from "./ids";
+import { humanDisplayName } from "./session";
 import type {
   BootstrapPayload,
   Conversation,
+  FriendProfilePublic,
   Message,
-  PublicBot,
+  PublicSpeaker,
 } from "./types";
 
 type ConversationRow = {
@@ -21,6 +32,7 @@ type MessageRow = {
   id: string;
   conversation_id: string;
   bot_id: string;
+  author_kind?: string | null;
   body: string;
   created_at: string;
 };
@@ -29,46 +41,87 @@ type MemberRow = {
   bot_id: string;
 };
 
-function mapBot(botId: string): PublicBot {
-  if (!isBotId(botId)) {
+type FriendProfileRow = {
+  id: string;
+  name: string;
+  dropbox_account_id: string | null;
+  dropbox_email: string | null;
+  dropbox_display_name: string | null;
+  dropbox_access_token: string | null;
+  dropbox_refresh_token: string | null;
+  dropbox_connected_at: string | null;
+  updated_at: string;
+};
+
+function asAuthorKind(value: string | null | undefined): AuthorKind {
+  return value === "human" ? "human" : "bot";
+}
+
+function speakerFor(authorId: string, authorKind: AuthorKind): PublicSpeaker {
+  const id = isBotId(authorId) ? authorId : "vishnu";
+  if (authorKind === "human") {
+    const name =
+      id === "friend"
+        ? humanDisplayName("friend", getFriendProfile().name)
+        : HUMANS.vishnu.name;
+    const color = id === "friend" ? "#D4B8FF" : "#C6F155";
     return {
-      id: "vishnu",
-      name: botId,
-      fullName: botId,
-      color: "#9CA3AF",
-      initial: botId.slice(0, 1).toUpperCase(),
+      id,
+      name,
+      fullName: name,
+      color,
+      initial: name.slice(0, 1).toUpperCase() || (id === "friend" ? "F" : "V"),
+      kind: "human",
     };
   }
-  return publicBot(getBot(botId));
+
+  if (!isBotId(authorId)) {
+    return {
+      id: "vishnu",
+      name: authorId,
+      fullName: authorId,
+      color: "#9CA3AF",
+      initial: authorId.slice(0, 1).toUpperCase(),
+      kind: "bot",
+    };
+  }
+
+  return publicBot(getBot(id));
 }
 
 function mapMessage(row: MessageRow): Message {
+  const authorKind = asAuthorKind(row.author_kind);
+  const authorId = isBotId(row.bot_id) ? row.bot_id : "vishnu";
+  const speaker = speakerFor(authorId, authorKind);
   return {
     id: row.id,
     seq: row.seq,
     conversationId: row.conversation_id,
-    botId: isBotId(row.bot_id) ? row.bot_id : "vishnu",
-    bot: mapBot(row.bot_id),
+    botId: authorId,
+    authorId,
+    authorKind,
+    bot: speaker,
+    author: speaker,
     body: row.body,
     createdAt: row.created_at,
   };
 }
 
-function membersFor(conversationId: string): PublicBot[] {
+function membersFor(conversationId: string): PublicSpeaker[] {
   const db = getDb();
   const rows = db
     .prepare(
       "SELECT bot_id FROM conversation_members WHERE conversation_id = ? ORDER BY bot_id",
     )
     .all(conversationId) as MemberRow[];
-  return rows.map((row) => mapBot(row.bot_id));
+  return rows.map((row) => speakerFor(row.bot_id, "bot"));
 }
 
 function lastMessageFor(conversationId: string): Message | null {
   const db = getDb();
   const row = db
     .prepare(
-      "SELECT seq, id, conversation_id, bot_id, body, created_at FROM messages WHERE conversation_id = ? ORDER BY seq DESC LIMIT 1",
+      "SELECT seq, id, conversation_id, bot_id, author_kind, body, created_at FROM messages WHERE conversation_id = ? ORDER BY seq DESC LIMIT 1",
     )
     .get(conversationId) as MessageRow | undefined;
   return row ? mapMessage(row) : null;
@@ -83,6 +136,75 @@ function mapConversation(row: ConversationRow): Conversation {
     members: membersFor(row.id),
     lastMessage: lastMessageFor(row.id),
   };
+}
+
+export function getFriendProfile(): FriendProfilePublic {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT id, name, dropbox_account_id, dropbox_email, dropbox_display_name,
+              dropbox_access_token, dropbox_refresh_token, dropbox_connected_at, updated_at
+       FROM friend_profiles WHERE id = 'friend'`,
+    )
+    .get() as FriendProfileRow | undefined;
+
+  const connected = Boolean(row?.dropbox_account_id || row?.dropbox_access_token);
+  return {
+    name: row?.name?.trim() ?? "",
+    dropbox: {
+      connected,
+      email: row?.dropbox_email ?? null,
+      displayName: row?.dropbox_display_name ?? null,
+      connectedAt: row?.dropbox_connected_at ?? null,
+    },
+  };
+}
+
+export function saveFriendName(name: string) {
+  const db = getDb();
+  const trimmed = name.trim().slice(0, 40);
+  db.prepare(
+    "UPDATE friend_profiles SET name = ?, updated_at = ? WHERE id = 'friend'",
+  ).run(trimmed, nowIso());
+  return getFriendProfile();
+}
+
+export function saveFriendDropbox(input: {
+  accountId: string;
+  email: string;
+  displayName: string;
+  accessToken: string;
+  refreshToken: string;
+}) {
+  const db = getDb();
+  db.prepare(
+    `UPDATE friend_profiles
+     SET dropbox_account_id = ?, dropbox_email = ?, dropbox_display_name = ?,
+         dropbox_access_token = ?, dropbox_refresh_token = ?, dropbox_connected_at = ?,
+         updated_at = ?
+     WHERE id = 'friend'`,
+  ).run(
+    input.accountId,
+    input.email,
+    input.displayName,
+    input.accessToken,
+    input.refreshToken,
+    nowIso(),
+    nowIso(),
+  );
+  return getFriendProfile();
+}
+
+export function clearFriendDropbox() {
+  const db = getDb();
+  db.prepare(
+    `UPDATE friend_profiles
+     SET dropbox_account_id = NULL, dropbox_email = NULL, dropbox_display_name = NULL,
+         dropbox_access_token = NULL, dropbox_refresh_token = NULL, dropbox_connected_at = NULL,
+         updated_at = ?
+     WHERE id = 'friend'`,
+  ).run(nowIso());
+  return getFriendProfile();
 }
 
 export function listConversations(): Conversation[] {
@@ -151,7 +273,7 @@ export function listMessages(input: {
   if (after === undefined || after === null || after === "") {
     const rows = db
       .prepare(
-        `SELECT seq, id, conversation_id, bot_id, body, created_at
+        `SELECT seq, id, conversation_id, bot_id, author_kind, body, created_at
          FROM messages
          WHERE conversation_id = ?
          ORDER BY seq ASC
@@ -175,7 +297,7 @@ export function listMessages(input: {
   } else {
     const byTime = db
       .prepare(
-        `SELECT seq, id, conversation_id, bot_id, body, created_at
+        `SELECT seq, id, conversation_id, bot_id, author_kind, body, created_at
          FROM messages
          WHERE conversation_id = ? AND created_at > ?
          ORDER BY seq ASC
@@ -187,7 +309,7 @@ export function listMessages(input: {
 
   const rows = db
     .prepare(
-      `SELECT seq, id, conversation_id, bot_id, body, created_at
+      `SELECT seq, id, conversation_id, bot_id, author_kind, body, created_at
        FROM messages
        WHERE conversation_id = ? AND seq > ?
        ORDER BY seq ASC
@@ -207,28 +329,36 @@ export function lastSeq(conversationId: string) {
 
 export function createMessage(input: {
   conversationId: string;
-  botId: string;
+  authorId: PersonId;
+  authorKind: AuthorKind;
   body: string;
 }) {
   const db = getDb();
   const id = createId("msg");
   const createdAt = nowIso();
   db.prepare(
-    "INSERT INTO messages (id, conversation_id, bot_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
-  ).run(id, input.conversationId, input.botId, input.body, createdAt);
+    "INSERT INTO messages (id, conversation_id, bot_id, author_kind, body, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run(
+    id,
+    input.conversationId,
+    input.authorId,
+    input.authorKind,
+    input.body,
+    createdAt,
+  );
   db.prepare(
     "UPDATE conversations SET updated_at = ? WHERE id = ?",
   ).run(createdAt, input.conversationId);
 
   const row = db
     .prepare(
-      "SELECT seq, id, conversation_id, bot_id, body, created_at FROM messages WHERE id = ?",
+      "SELECT seq, id, conversation_id, bot_id, author_kind, body, created_at FROM messages WHERE id = ?",
     )
     .get(id) as MessageRow;
   return mapMessage(row);
 }
 
-export function getBootstrap(): BootstrapPayload {
+export function getBootstrap(viewerId: PersonId): BootstrapPayload {
   const conversations = listConversations();
   const preferred =
     conversations.find(
@@ -242,14 +372,22 @@ export function getBootstrap(): BootstrapPayload {
   const messages = activeConversationId
     ? listMessages({ conversationId: activeConversationId })
     : [];
+  const friendProfile = getFriendProfile();
+  const showTokens = shouldShowTokensInUi() && viewerId === "vishnu";
 
   return {
     conversations,
     messages,
     activeConversationId,
     bots: BOT_LIST.map(publicBot),
-    persistence: getPersistenceInfo(),
-    tokens: shouldShowTokensInUi()
+    viewer: {
+      id: viewerId,
+      name: humanDisplayName(viewerId, friendProfile.name),
+      username: HUMANS[viewerId].username,
+    },
+    friendProfile,
+    dropboxConfigured: isDropboxConfigured(),
+    tokens: showTokens
       ? {
           vishnu: getBot("vishnu").token,
           friend: getBot("friend").token,

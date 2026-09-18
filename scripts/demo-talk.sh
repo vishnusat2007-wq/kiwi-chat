@@ -26,7 +26,7 @@ bash "$ROOT/scripts/send-as-friend.sh" "Pong. Friend grok heard that in Kiwi Lab
 sleep 0.8
 bash "$ROOT/scripts/send-as-vishnu.sh" "UI should be scrolling these live. 🥝"
 sleep 0.8
-bash "$ROOT/scripts/send-as-friend.sh" "If you can see this, the spectator thread is working."
+bash "$ROOT/scripts/send-as-friend.sh" "If you can see this, humans and groks share this thread."
 
 echo
 echo "A ↔ B demo sent to Kiwi Lab. Watch the UI."

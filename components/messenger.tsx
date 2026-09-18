@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BotAvatar, StackedAvatars } from "@/components/avatar";
 import { KiwiMark } from "@/components/kiwi-mark";
 import {
@@ -11,14 +13,6 @@ import {
   previewBody,
 } from "@/lib/format";
 import type { BootstrapPayload, Conversation, Message } from "@/lib/types";
-
-function sideFor(botId: string, members: Conversation["members"]) {
-  const hasPair =
-    members.some((member) => member.id === "vishnu") &&
-    members.some((member) => member.id === "friend");
-  if (hasPair) return botId === "friend" ? "right" : "left";
-  return members[0]?.id === botId ? "left" : "right";
-}
 
 function mergeMessages(current: Message[], incoming: Message[]) {
   if (incoming.length === 0) return current;
@@ -43,11 +37,31 @@ function curlExample(
   -d '{"conversationId":"${conversationId}","body":"${sample}"}'`;
 }
 
+function useLoginRedirect() {
+  const router = useRouter();
+  return useCallback(
+    (status: number) => {
+      if (status === 401) {
+        router.push("/login");
+        router.refresh();
+        return true;
+      }
+      return false;
+    },
+    [router],
+  );
+}
+
 export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
+  const router = useRouter();
+  const goToLoginIfNeeded = useLoginRedirect();
   const [conversations, setConversations] = useState(bootstrap.conversations);
   const [activeId, setActiveId] = useState(bootstrap.activeConversationId);
   const [messages, setMessages] = useState(bootstrap.messages);
   const [query, setQuery] = useState("");
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [mobilePane, setMobilePane] = useState<"list" | "thread">(
     bootstrap.activeConversationId ? "thread" : "list",
   );
@@ -59,12 +73,16 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const messagesRef = useRef(messages);
+  const viewerId = bootstrap.viewer.id;
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
   const active = conversations.find((item) => item.id === activeId) ?? null;
+  const needsFriendSetup =
+    viewerId === "vishnu" &&
+    (!bootstrap.friendProfile.name || !bootstrap.friendProfile.dropbox.connected);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -100,11 +118,14 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
   }, [messages]);
 
   const refreshConversations = useCallback(async () => {
-    const response = await fetch("/api/conversations", { cache: "no-store" });
-    if (!response.ok) return;
+    const response = await fetch("/api/conversations", {
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (goToLoginIfNeeded(response.status) || !response.ok) return;
     const data = (await response.json()) as { conversations: Conversation[] };
     setConversations(data.conversations);
-  }, []);
+  }, [goToLoginIfNeeded]);
 
   useEffect(() => {
     if (!activeId) {
@@ -142,9 +163,9 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
       const after = messagesRef.current.at(-1)?.seq ?? 0;
       const response = await fetch(
         `/api/messages?conversationId=${encodeURIComponent(activeId)}&after=${after}`,
-        { cache: "no-store" },
+        { cache: "no-store", credentials: "include" },
       );
-      if (!response.ok || cancelled) return;
+      if (goToLoginIfNeeded(response.status) || !response.ok || cancelled) return;
       const data = (await response.json()) as { messages: Message[] };
       applyIncoming(data.messages);
     }, 1500);
@@ -159,10 +180,9 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
       window.clearInterval(poll);
       window.clearInterval(listPoll);
     };
-  }, [activeId, refreshConversations]);
+  }, [activeId, goToLoginIfNeeded, refreshConversations]);
 
   useEffect(() => {
-    if (!stickToBottom.current) return;
     if (!stickToBottom.current) return;
     const node = scrollerRef.current;
     if (!node) return;
@@ -187,25 +207,75 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
     stickToBottom.current = true;
     const response = await fetch(
       `/api/messages?conversationId=${encodeURIComponent(id)}`,
-      { cache: "no-store" },
+      { cache: "no-store", credentials: "include" },
     );
-    if (!response.ok) return;
+    if (goToLoginIfNeeded(response.status) || !response.ok) return;
     const data = (await response.json()) as { messages: Message[] };
     setMessages(data.messages);
+  }
+
+  async function sendMessage(event?: FormEvent) {
+    event?.preventDefault();
+    if (!activeId || sending) return;
+    const body = draft.trim();
+    if (!body) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: activeId, body }),
+      });
+      if (goToLoginIfNeeded(response.status)) return;
+      const data = (await response.json()) as {
+        message?: Message | string;
+        error?: string;
+      };
+      if (!response.ok) {
+        setSendError(
+          typeof data.message === "string"
+            ? data.message
+            : "Could not send that message.",
+        );
+        return;
+      }
+      if (!data.message || typeof data.message === "string") {
+        setSendError("Could not send that message.");
+        return;
+      }
+      const created = data.message;
+      setMessages((current) => mergeMessages(current, [created]));
+      stickToBottom.current = true;
+      setDraft("");
+      void refreshConversations();
+    } catch {
+      setSendError("Could not send that message.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function logout() {
+    await fetch("/api/logout", { method: "POST", credentials: "include" });
+    router.push("/login");
+    router.refresh();
   }
 
   const tokenFor = (bot: "vishnu" | "friend") =>
     bootstrap.tokens ? bootstrap.tokens[bot] : null;
 
+  function onComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void sendMessage();
+    }
+  }
+
   return (
     <div className="kiwi-shell relative flex h-[100dvh] flex-col overflow-hidden">
       <div className="kiwi-noise" />
-      {bootstrap.persistence.ephemeral ? (
-        <div className="relative z-10 border-b border-line bg-[rgba(198,241,85,0.08)] px-4 py-2 text-center text-[13px] text-kiwi">
-          Ephemeral SQLite on Vercel Hobby (`/tmp`) — threads reset when this
-          instance sleeps. Locally they persist in `./data/kiwi.db`.
-        </div>
-      ) : null}
 
       <div className="relative mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col p-0 md:p-4 lg:p-6">
         <div className="grid min-h-0 flex-1 overflow-hidden border-line bg-bg-1/80 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur-xl md:grid-cols-[320px_1fr] md:rounded-[28px] md:border lg:grid-cols-[360px_1fr]">
@@ -216,14 +286,21 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
           >
             <div className="flex shrink-0 items-center gap-3 px-5 pt-5 pb-4">
               <KiwiMark className="h-10 w-10" />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="font-display text-[22px] leading-none tracking-tight text-paper">
                   Kiwi Chat
                 </p>
                 <p className="mt-1 text-[12px] text-mist">
-                  Spectate the groks · not an MCP broker
+                  Signed in as {bootstrap.viewer.name}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="shrink-0 rounded-full border border-line px-3 py-1.5 text-[12px] text-mist hover:text-paper"
+              >
+                Log out
+              </button>
             </div>
 
             <div className="px-4 pb-3 shrink-0">
@@ -278,10 +355,10 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                             </span>
                             <span className="mt-0.5 block truncate text-[13px] text-mist">
                               {conversation.lastMessage
-                                ? `${conversation.lastMessage.bot.name}: ${previewBody(
+                                ? `${conversation.lastMessage.author.name}: ${previewBody(
                                     conversation.lastMessage.body,
                                   )}`
-                                : "No messages yet · waiting on the groks"}
+                                : "No messages yet · say hi"}
                             </span>
                           </span>
                         </button>
@@ -294,21 +371,46 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
 
             <div className="shrink-0 border-t border-line px-4 py-4 pb-6">
               <p className="mb-2 text-[11px] font-medium tracking-[0.16em] text-mist uppercase">
-                Agents
+                People & groks
               </p>
               <div className="space-y-2">
                 {bootstrap.bots.map((bot) => (
                   <div key={bot.id} className="flex items-center gap-3">
                     <BotAvatar bot={bot} size="sm" showLive />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-paper">{bot.name}</p>
-                      <p className="truncate text-[12px] text-mist">
-                        {bot.fullName}
-                      </p>
+                      <p className="text-sm font-medium text-paper">{bot.fullName}</p>
+                      <p className="truncate text-[12px] text-mist">Bot · {bot.name}</p>
                     </div>
                   </div>
                 ))}
               </div>
+
+              <Link
+                href="/profile"
+                className="mt-4 block rounded-2xl border border-line bg-bg-0/60 p-3 hover:border-line-strong"
+              >
+                <p className="text-[11px] font-medium tracking-[0.14em] text-mist uppercase">
+                  Friend setup
+                </p>
+                <p className="mt-1 text-sm text-paper">
+                  {bootstrap.friendProfile.name || "Name not set yet"}
+                </p>
+                <p className="mt-0.5 text-[12px] text-mist">
+                  Dropbox{" "}
+                  {bootstrap.friendProfile.dropbox.connected
+                    ? `connected${
+                        bootstrap.friendProfile.dropbox.email
+                          ? ` · ${bootstrap.friendProfile.dropbox.email}`
+                          : ""
+                      }`
+                    : "not connected"}
+                </p>
+                {needsFriendSetup ? (
+                  <p className="mt-2 text-[12px] text-kiwi">Open to check their details</p>
+                ) : viewerId === "friend" ? (
+                  <p className="mt-2 text-[12px] text-kiwi">Edit your name or Dropbox</p>
+                ) : null}
+              </Link>
 
               {bootstrap.tokens ? (
                 <div className="mt-4 rounded-2xl border border-line bg-bg-0/60 p-3">
@@ -356,7 +458,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                         {active.title}
                       </h1>
                       <p className="truncate text-[12px] text-mist">
-                        {active.members.map((member) => member.fullName).join(" · ")}
+                        You, {bootstrap.viewer.id === "vishnu" ? "your friend" : "Vishnu"}, and both groks
                       </p>
                     </div>
                   </div>
@@ -387,12 +489,11 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                     <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center text-center">
                       <KiwiMark className="h-16 w-16" />
                       <p className="mt-5 font-display text-2xl text-paper">
-                        The groks are quiet
+                        Start the thread
                       </p>
                       <p className="mt-2 text-sm leading-6 text-mist">
-                        This thread is waiting. Send from a bot with{" "}
-                        <code className="text-kiwi">POST /api/messages</code> —
-                        humans only watch.
+                        Type below to talk with the groks. They reply here when
+                        their agents are connected.
                       </p>
                     </div>
                   ) : (
@@ -409,12 +510,18 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                           {day.items.map((message, index) => {
                             const previous = day.items[index - 1];
                             const groupedWithPrevious =
-                              previous?.botId === message.botId &&
+                              previous?.authorId === message.authorId &&
+                              previous?.authorKind === message.authorKind &&
                               Date.parse(message.createdAt) -
                                 Date.parse(previous.createdAt) <
                                 120_000;
-                            const side = sideFor(message.botId, active.members);
-                            const isRight = side === "right";
+                            const isRight =
+                              message.authorKind === "human" &&
+                              message.authorId === viewerId;
+                            const label =
+                              message.authorKind === "bot"
+                                ? message.author.fullName
+                                : message.author.name;
                             return (
                               <li
                                 key={message.id}
@@ -429,7 +536,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                                 >
                                   <div className="mb-1 w-8 shrink-0">
                                     {groupedWithPrevious ? null : (
-                                      <BotAvatar bot={message.bot} size="sm" />
+                                      <BotAvatar bot={message.author} size="sm" />
                                     )}
                                   </div>
                                   <div className={isRight ? "text-right" : ""}>
@@ -440,7 +547,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                                         }`}
                                       >
                                         <span className="text-[12px] font-medium text-paper">
-                                          {message.bot.name}
+                                          {label}
                                         </span>
                                         <span className="text-[11px] text-mist">
                                           {formatClock(message.createdAt)}
@@ -457,8 +564,10 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                                       }`}
                                       style={{
                                         background: isRight
-                                          ? "linear-gradient(180deg, rgba(212,184,255,0.2), rgba(42,24,64,0.92))"
-                                          : "linear-gradient(180deg, rgba(198,241,85,0.16), rgba(20,40,16,0.94))",
+                                          ? "linear-gradient(180deg, rgba(198,241,85,0.22), rgba(20,40,16,0.94))"
+                                          : message.authorId === "friend"
+                                            ? "linear-gradient(180deg, rgba(212,184,255,0.2), rgba(42,24,64,0.92))"
+                                            : "linear-gradient(180deg, rgba(198,241,85,0.16), rgba(20,40,16,0.94))",
                                         color: "#f4f7ee",
                                         boxShadow:
                                           "inset 0 1px 0 rgba(255,255,255,0.06)",
@@ -479,20 +588,47 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                 </div>
 
                 <footer className="shrink-0 border-t border-line bg-bg-1/70 px-4 py-3 md:px-6">
-                  <div className="rounded-[22px] border border-line bg-bg-0/80 px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="min-w-0 truncate text-sm text-mist">
-                        Humans watch. Agents send with bearer tokens.
+                  <form
+                    onSubmit={(event) => void sendMessage(event)}
+                    className="rounded-[22px] border border-line bg-bg-0/80 px-4 py-3"
+                  >
+                    <label className="sr-only" htmlFor="message-draft">
+                      Message
+                    </label>
+                    <textarea
+                      id="message-draft"
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      onKeyDown={onComposerKeyDown}
+                      rows={2}
+                      placeholder="Ask the groks how the project is going…"
+                      className="w-full resize-none bg-transparent text-[15px] leading-6 text-paper outline-none placeholder:text-mist/70"
+                    />
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <p className="min-w-0 truncate text-[12px] text-mist">
+                        {sendError ??
+                          "Enter to send · groks reply when their agents are on"}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => setShowCurl((value) => !value)}
-                        className="shrink-0 rounded-full bg-kiwi px-3 py-1.5 text-[12px] font-semibold text-[#11180f] hover:bg-[#d4f56f]"
-                      >
-                        {showCurl ? "Hide" : "curl"}
-                      </button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {viewerId === "vishnu" ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowCurl((value) => !value)}
+                            className="rounded-full border border-line px-3 py-1.5 text-[12px] text-mist hover:text-paper"
+                          >
+                            {showCurl ? "Hide curl" : "curl"}
+                          </button>
+                        ) : null}
+                        <button
+                          type="submit"
+                          disabled={sending || !draft.trim()}
+                          className="rounded-full bg-kiwi px-3 py-1.5 text-[12px] font-semibold text-[#11180f] hover:bg-[#d4f56f] disabled:opacity-50"
+                        >
+                          {sending ? "Sending…" : "Send"}
+                        </button>
+                      </div>
                     </div>
-                    {showCurl && activeId ? (
+                    {showCurl && activeId && viewerId === "vishnu" ? (
                       <div className="mt-3">
                         <div className="mb-2 flex gap-2">
                           {(["vishnu", "friend"] as const).map((bot) => (
@@ -527,7 +663,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                         </button>
                       </div>
                     ) : null}
-                  </div>
+                  </form>
                 </footer>
               </>
             ) : (
