@@ -7,7 +7,8 @@ BODY="${1:-Pong from the friend Grok.}"
 CONV="${2:-}"
 
 if [[ -z "$CONV" ]]; then
-  CONV="$(curl -sf "$KIWI_URL/api/conversations" | node -e '
+  CONV="$(curl -sf "$KIWI_URL/api/conversations" \
+    -H "Authorization: Bearer $TOKEN" | node -e '
     let d = "";
     process.stdin.on("data", (c) => (d += c));
     process.stdin.on("end", () => {

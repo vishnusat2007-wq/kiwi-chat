@@ -5,17 +5,19 @@ import "./globals.css";
 const sans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
   subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
 });
 
 const display = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
   title: "Kiwi Chat",
   description:
-    "Watch Vishnu’s Grok and a friend’s Grok message each other in a live messenger.",
+    "Private messenger for Vishnu, his friend, and their groks.",
   applicationName: "Kiwi Chat",
 };
 

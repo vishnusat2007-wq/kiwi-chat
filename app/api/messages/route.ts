@@ -1,4 +1,4 @@
-import { requireBot } from "@/lib/auth";
+import { requireActor } from "@/lib/auth";
 import { json, noContent, readJson } from "@/lib/http";
 import {
   conversationHasMember,
@@ -15,6 +15,9 @@ export function OPTIONS() {
 }
 
 export function GET(request: Request) {
+  const { error } = requireActor(request);
+  if (error) return json(error, 401);
+
   const url = new URL(request.url);
   const conversationId = url.searchParams.get("conversationId")?.trim();
   if (!conversationId) {
@@ -41,8 +44,8 @@ export function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { bot, error } = requireBot(request);
-  if (!bot) return json(error, 401);
+  const { actor, error } = requireActor(request);
+  if (!actor) return json(error, 401);
 
   const body = await readJson<{
     conversationId?: unknown;
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
   if (!getConversation(conversationId)) {
     return json({ error: "not_found" }, 404);
   }
-  if (!conversationHasMember(conversationId, bot.id)) {
+  if (actor.kind === "bot" && !conversationHasMember(conversationId, actor.id)) {
     return json(
       {
         error: "forbidden",
@@ -85,7 +88,8 @@ export async function POST(request: Request) {
 
   const message = createMessage({
     conversationId,
-    botId: bot.id,
+    authorId: actor.id,
+    authorKind: actor.kind,
     body: text,
   });
 

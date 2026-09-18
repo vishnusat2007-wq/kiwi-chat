@@ -1,3 +1,4 @@
+import { requireActor } from "@/lib/auth";
 import { corsHeaders } from "@/lib/http";
 import { getConversation, lastSeq, listMessages } from "@/lib/store";
 
@@ -10,6 +11,11 @@ export function OPTIONS() {
 }
 
 export function GET(request: Request) {
+  const { error } = requireActor(request);
+  if (error) {
+    return Response.json(error, { status: 401, headers: corsHeaders() });
+  }
+
   const url = new URL(request.url);
   const conversationId = url.searchParams.get("conversationId")?.trim();
   if (!conversationId) {

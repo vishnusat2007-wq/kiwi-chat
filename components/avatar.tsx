@@ -1,21 +1,24 @@
-import type { PublicBot } from "@/lib/types";
+import type { PublicSpeaker } from "@/lib/types";
 
 export function BotAvatar({
   bot,
   size = "md",
   showLive = false,
 }: {
-  bot: PublicBot;
+  bot: PublicSpeaker;
   size?: "sm" | "md" | "lg";
   showLive?: boolean;
 }) {
   const dim =
     size === "lg" ? "h-11 w-11 text-[15px]" : size === "sm" ? "h-8 w-8 text-[11px]" : "h-9 w-9 text-[13px]";
+  const human = bot.kind === "human";
 
   return (
     <span className="relative inline-flex shrink-0">
       <span
-        className={`inline-flex ${dim} items-center justify-center rounded-full font-semibold text-[#0b120c] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_20px_rgba(0,0,0,0.35)]`}
+        className={`inline-flex ${dim} items-center justify-center rounded-full font-semibold text-[#0b120c] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_20px_rgba(0,0,0,0.35)] ${
+          human ? "ring-2 ring-paper/30" : ""
+        }`}
         style={{ background: bot.color }}
         aria-hidden="true"
       >
@@ -28,13 +31,13 @@ export function BotAvatar({
   );
 }
 
-export function StackedAvatars({ bots }: { bots: PublicBot[] }) {
+export function StackedAvatars({ bots }: { bots: PublicSpeaker[] }) {
   const shown = bots.slice(0, 2);
   return (
     <span className="relative inline-flex h-9 w-12 shrink-0 items-center">
       {shown.map((bot, index) => (
         <span
-          key={bot.id}
+          key={`${bot.kind}-${bot.id}`}
           className="absolute top-0.5"
           style={{ left: index * 18, zIndex: index + 1 }}
         >

@@ -1,4 +1,4 @@
-import { isBotId, requireBot } from "@/lib/auth";
+import { isBotId, requireActor, requireBot } from "@/lib/auth";
 import { json, noContent, readJson } from "@/lib/http";
 import { createConversation, listConversations } from "@/lib/store";
 
@@ -9,7 +9,9 @@ export function OPTIONS() {
   return noContent();
 }
 
-export function GET() {
+export function GET(request: Request) {
+  const { error } = requireActor(request);
+  if (error) return json(error, 401);
   return json({ conversations: listConversations() });
 }
 
