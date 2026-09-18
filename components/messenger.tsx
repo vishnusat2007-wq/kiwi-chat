@@ -277,27 +277,27 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
     <div className="kiwi-shell relative flex h-[100dvh] flex-col overflow-hidden">
       <div className="kiwi-noise" />
 
-      <div className="relative mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col p-0 md:p-4 lg:p-6">
-        <div className="grid min-h-0 flex-1 overflow-hidden border-line bg-bg-1/80 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur-xl md:grid-cols-[320px_1fr] md:rounded-[28px] md:border lg:grid-cols-[360px_1fr]">
+      <div className="relative mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col p-0 md:p-5 lg:p-7">
+        <div className="kiwi-frame grid min-h-0 flex-1 overflow-hidden md:grid-cols-[340px_1fr] md:rounded-[32px] lg:grid-cols-[380px_1fr]">
           <aside
             className={`${
               mobilePane === "list" ? "flex" : "hidden md:flex"
             } min-h-0 flex-col overflow-hidden border-r border-line bg-bg-1`}
           >
-            <div className="flex shrink-0 items-center gap-3 px-5 pt-6 pb-5">
+            <div className="flex shrink-0 items-center gap-3 border-b border-line px-5 pt-6 pb-5">
               <KiwiMark className="h-12 w-12" />
               <div className="min-w-0 flex-1">
-                <p className="font-display text-[26px] leading-none tracking-tight text-paper">
+                <p className="font-display text-[28px] leading-none text-paper">
                   Kiwi Chat
                 </p>
-                <p className="mt-1.5 text-[13px] font-medium text-kiwi">
+                <p className="mt-1.5 text-[13px] font-bold tracking-wide text-kiwi uppercase">
                   {bootstrap.viewer.name}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => void logout()}
-                className="shrink-0 rounded-full border border-line px-3 py-1.5 text-[12px] text-mist hover:text-paper"
+                className="shrink-0 rounded-full border border-line px-3.5 py-2 text-[12px] font-bold tracking-wide text-mist uppercase hover:border-line-strong hover:text-paper"
               >
                 Log out
               </button>
@@ -312,16 +312,18 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search threads"
-                className="w-full rounded-2xl border border-line bg-bg-0/70 px-4 py-2.5 text-sm text-paper outline-none placeholder:text-mist/70 focus:border-line-strong focus:ring-2 focus:ring-[rgba(198,241,85,0.18)]"
+                className="kiwi-field py-3 text-[15px]"
               />
             </div>
 
             <div className="kiwi-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3">
               {filtered.length === 0 ? (
-                <div className="mx-2 mt-6 rounded-3xl border border-dashed border-line px-4 py-10 text-center">
-                  <p className="font-display text-xl text-paper">No threads yet</p>
-                  <p className="mt-2 text-sm leading-6 text-mist">
-                    Bots open conversations with{" "}
+                <div className="mx-2 mt-6 rounded-[28px] border border-dashed border-line-strong px-5 py-12 text-center">
+                  <p className="font-display text-[28px] leading-none text-paper">
+                    No threads yet
+                  </p>
+                  <p className="mt-3 text-[15px] leading-7 text-mist">
+                    A grok opens one with{" "}
                     <code className="text-kiwi">POST /api/conversations</code>
                   </p>
                 </div>
@@ -334,16 +336,16 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                         <button
                           type="button"
                           onClick={() => void openConversation(conversation.id)}
-                          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
+                          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left transition ${
                             selected
-                              ? "bg-[rgba(198,241,85,0.12)] ring-1 ring-[rgba(198,241,85,0.22)]"
+                              ? "bg-[rgba(198,241,85,0.16)] ring-1 ring-[rgba(198,241,85,0.38)]"
                               : "hover:bg-bg-2"
                           }`}
                         >
                           <StackedAvatars bots={conversation.members} />
                           <span className="min-w-0 flex-1">
                             <span className="flex items-baseline justify-between gap-2">
-                              <span className="truncate font-medium text-paper">
+                              <span className="truncate text-[15px] font-bold text-paper">
                                 {conversation.title}
                               </span>
                               <span className="shrink-0 text-[11px] text-mist">
@@ -370,15 +372,13 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
             </div>
 
             <div className="shrink-0 border-t border-line px-4 py-4 pb-6">
-              <p className="mb-2 text-[11px] font-medium tracking-[0.16em] text-mist uppercase">
-                People & groks
-              </p>
+              <p className="kiwi-kicker mb-3">People & groks</p>
               <div className="space-y-2">
                 {bootstrap.bots.map((bot) => (
                   <div key={bot.id} className="flex items-center gap-3">
                     <BotAvatar bot={bot} size="sm" showLive />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-paper">{bot.fullName}</p>
+                      <p className="text-[15px] font-bold text-paper">{bot.fullName}</p>
                       <p className="truncate text-[12px] text-mist">Bot · {bot.name}</p>
                     </div>
                   </div>
@@ -387,12 +387,10 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
 
               <Link
                 href="/profile"
-                className="mt-4 block rounded-2xl border border-line-strong bg-bg-0 p-4 hover:bg-bg-2"
+                className="mt-5 block rounded-[24px] border border-line-strong bg-bg-0 p-4 hover:bg-bg-2"
               >
-                <p className="text-[11px] font-semibold tracking-[0.16em] text-kiwi uppercase">
-                  Friend setup
-                </p>
-                <p className="mt-1.5 font-display text-xl leading-none text-paper">
+                <p className="kiwi-kicker">Friend setup</p>
+                <p className="mt-2 font-display text-[26px] leading-none text-paper">
                   {bootstrap.friendProfile.name || "Name not set yet"}
                 </p>
                 <p className="mt-2 text-[13px] text-mist">
@@ -418,9 +416,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
 
               {bootstrap.tokens ? (
                 <div className="mt-4 rounded-2xl border border-line bg-bg-0/60 p-3">
-                  <p className="text-[11px] font-medium tracking-[0.14em] text-mist uppercase">
-                    Bot tokens
-                  </p>
+                  <p className="kiwi-kicker">Bot tokens</p>
                   {(["vishnu", "friend"] as const).map((bot) => (
                     <button
                       key={bot}
@@ -447,10 +443,10 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
           >
             {active ? (
               <>
-                <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 md:px-6">
+                <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-4 md:px-7">
                   <button
                     type="button"
-                    className="rounded-full border border-line px-3 py-1.5 text-sm text-mist md:hidden"
+                    className="rounded-full border border-line px-3 py-1.5 text-sm font-bold text-mist md:hidden"
                     onClick={() => setMobilePane("list")}
                   >
                     Threads
@@ -458,21 +454,27 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <StackedAvatars bots={active.members} />
                     <div className="min-w-0">
-                      <h1 className="truncate font-display text-[26px] tracking-tight text-paper">
+                      <h1 className="truncate font-display text-[30px] leading-none text-paper">
                         {active.title}
                       </h1>
-                      <p className="truncate text-[12px] text-mist">
+                      <p className="mt-1.5 truncate text-[13px] font-medium text-mist">
                         You, {bootstrap.viewer.id === "vishnu" ? "your friend" : "Vishnu"}, and both groks
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 rounded-full border border-line bg-bg-1/80 px-3 py-1.5 text-[12px] text-mist">
+                  <div
+                    className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-extrabold tracking-[0.14em] uppercase ${
+                      live
+                        ? "bg-kiwi text-[#11180f]"
+                        : "border border-line bg-bg-1 text-mist"
+                    }`}
+                  >
                     <span
                       className={`live-dot h-2 w-2 rounded-full ${
-                        live ? "bg-kiwi" : "bg-mist"
+                        live ? "bg-[#11180f]" : "bg-mist"
                       }`}
                     />
-                    {live ? "Live" : "Reconnecting"}
+                    {live ? "Live" : "Reconnect"}
                   </div>
                 </header>
 
@@ -491,11 +493,13 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                 >
                   {messages.length === 0 ? (
                     <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center text-center">
-                      <KiwiMark className="h-[4.5rem] w-[4.5rem]" />
-                      <p className="mt-6 font-display text-[34px] leading-none tracking-tight text-paper">
+                      <div className="kiwi-halo h-24 w-24">
+                        <KiwiMark className="relative h-[4.5rem] w-[4.5rem]" />
+                      </div>
+                      <p className="mt-7 font-display text-[42px] leading-[0.9] text-paper">
                         The room is open.
                       </p>
-                      <p className="mt-4 text-[15px] leading-7 text-mist">
+                      <p className="mt-4 text-[16px] leading-7 text-mist">
                         Type below. The groks answer in this thread when their
                         agents are on.
                       </p>
@@ -505,7 +509,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                       <div key={day.key} className="mb-6">
                         <div className="mb-4 flex items-center gap-3">
                           <span className="h-px flex-1 bg-line" />
-                          <span className="rounded-full border border-line bg-bg-1 px-3 py-1 text-[11px] tracking-wide text-mist uppercase">
+                          <span className="rounded-full border border-line bg-bg-1 px-3 py-1 text-[11px] font-extrabold tracking-[0.16em] text-mist uppercase">
                             {day.label}
                           </span>
                           <span className="h-px flex-1 bg-line" />
@@ -550,7 +554,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                                           isRight ? "justify-end" : ""
                                         }`}
                                       >
-                                        <span className="text-[12px] font-medium text-paper">
+                                        <span className="text-[13px] font-bold text-paper">
                                           {label}
                                         </span>
                                         <span className="text-[11px] text-mist">
@@ -559,7 +563,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                                       </div>
                                     )}
                                     <div
-                                      className={`rounded-[22px] px-4 py-2.5 text-[15px] leading-6 ${
+                                      className={`rounded-[22px] px-4 py-3 text-[16px] leading-6 ${
                                         isRight ? "bubble-right" : "bubble-left"
                                       } ${
                                         flashIds.has(message.id)
@@ -591,10 +595,10 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                   <div />
                 </div>
 
-                <footer className="shrink-0 border-t border-line bg-bg-1/70 px-4 py-3 md:px-6">
+                <footer className="shrink-0 border-t border-line bg-bg-1/80 px-4 py-4 md:px-7">
                   <form
                     onSubmit={(event) => void sendMessage(event)}
-                    className="rounded-[26px] border border-line-strong bg-bg-0 px-4 py-4"
+                    className="rounded-[28px] border border-line-strong bg-bg-0 px-5 py-4"
                   >
                     <label className="sr-only" htmlFor="message-draft">
                       Message
@@ -606,10 +610,10 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                       onKeyDown={onComposerKeyDown}
                       rows={2}
                       placeholder="Ask the groks how the project is going."
-                      className="w-full resize-none bg-transparent text-[16px] leading-6 text-paper outline-none placeholder:text-mist/70"
+                      className="w-full resize-none bg-transparent text-[17px] leading-7 text-paper outline-none placeholder:text-mist/60"
                     />
                     <div className="mt-2 flex items-center justify-between gap-3">
-                      <p className="min-w-0 truncate text-[12px] text-mist">
+                      <p className="min-w-0 truncate text-[13px] font-medium text-mist">
                         {sendError ??
                           "Enter to send · groks reply when their agents are on"}
                       </p>
@@ -618,7 +622,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                           <button
                             type="button"
                             onClick={() => setShowCurl((value) => !value)}
-                            className="rounded-full border border-line px-3 py-1.5 text-[12px] text-mist hover:text-paper"
+                            className="rounded-full border border-line px-3 py-2 text-[12px] font-bold text-mist hover:text-paper"
                           >
                             {showCurl ? "Hide curl" : "curl"}
                           </button>
@@ -626,7 +630,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                         <button
                           type="submit"
                           disabled={sending || !draft.trim()}
-                          className="kiwi-btn rounded-full px-4 py-2 text-[13px] disabled:opacity-50"
+                          className="kiwi-btn rounded-full px-5 py-2.5 text-[14px] disabled:opacity-50"
                         >
                           {sending ? "Sending…" : "Send"}
                         </button>
@@ -672,11 +676,13 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
               </>
             ) : (
               <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-                <KiwiMark className="h-20 w-20" />
-                <p className="mt-6 font-display text-[36px] leading-none text-paper">
+                <div className="kiwi-halo h-28 w-28">
+                  <KiwiMark className="relative h-20 w-20" />
+                </div>
+                <p className="mt-8 font-display text-[44px] leading-none text-paper">
                   Pick a thread
                 </p>
-                <p className="mt-4 max-w-sm text-[15px] leading-7 text-mist">
+                <p className="mt-4 max-w-sm text-[16px] leading-7 text-mist">
                   Choose Kiwi Lab on the left, or let a grok open one with{" "}
                   <code className="text-kiwi">POST /api/conversations</code>.
                 </p>

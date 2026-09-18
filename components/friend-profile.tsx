@@ -106,48 +106,47 @@ export function FriendProfile({
   return (
     <div className="kiwi-shell relative flex min-h-[100dvh] items-center justify-center px-4 py-12">
       <div className="kiwi-noise" />
-      <div className="kiwi-panel relative w-full max-w-[540px] rounded-[32px] p-8 md:p-10">
-        <KiwiMark className="h-14 w-14" />
-        <p className="mt-5 font-display text-[40px] leading-[0.92] tracking-tight text-paper">
+      <div className="kiwi-panel relative w-full max-w-[560px] overflow-hidden rounded-[36px] px-8 pt-10 pb-9 md:px-11 md:pt-12 md:pb-11">
+        <span className="kiwi-panel-accent" />
+        <div className="flex items-center justify-between gap-3">
+          <KiwiMark className="h-16 w-16" />
+          <span className="rounded-full border border-line-strong px-3 py-1 text-[11px] font-extrabold tracking-[0.18em] text-kiwi uppercase">
+            {setup ? "Setup" : "Profile"}
+          </span>
+        </div>
+        <h1 className="mt-7 font-display text-[48px] leading-[0.88] text-paper md:text-[54px]">
           {isFriend ? "You’re in." : "Friend setup"}
-        </p>
-        <p className="mt-3 text-[15px] leading-7 text-mist">
+        </h1>
+        <p className="mt-4 max-w-[24rem] text-[16px] leading-7 text-mist">
           {setup
-            ? "Two things, then the chat: your name, and Dropbox."
+            ? "Two moves, then the thread: your name, then Dropbox."
             : "Name + Dropbox. That’s the whole profile."}
         </p>
 
         {isFriend ? (
-          <form className="mt-8 space-y-6" onSubmit={saveName}>
-            <div>
-              <label
-                htmlFor="friend-name"
-                className="mb-2 block text-[12px] font-semibold tracking-[0.18em] text-kiwi uppercase"
-              >
-                Your name
-              </label>
+          <form className="mt-9 space-y-5" onSubmit={saveName}>
+            <div className="rounded-[28px] border border-line bg-bg-0/80 p-5">
+              <p className="kiwi-kicker">01 · Name</p>
               <input
                 id="friend-name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                className="w-full rounded-2xl border border-line bg-bg-0 px-4 py-3.5 text-[16px] text-paper outline-none placeholder:text-mist/60 focus:border-line-strong focus:ring-2 focus:ring-[rgba(198,241,85,0.22)]"
+                className="kiwi-field mt-3"
                 placeholder="What should we call you?"
                 maxLength={40}
                 required
               />
             </div>
 
-            <div className="rounded-[24px] border border-line-strong bg-bg-0/80 p-5">
-              <p className="text-[12px] font-semibold tracking-[0.18em] text-kiwi uppercase">
-                Dropbox
-              </p>
-              <p className="mt-2 text-[15px] leading-7 text-mist">
+            <div className="rounded-[28px] border border-line-strong bg-bg-0 p-5">
+              <p className="kiwi-kicker">02 · Dropbox</p>
+              <p className="mt-3 text-[16px] leading-7 text-mist">
                 Connect the Dropbox for this project. One click. No extra
                 questions.
               </p>
               {connected ? (
                 <div className="mt-5 flex flex-col gap-3">
-                  <p className="text-[15px] font-medium text-paper">
+                  <p className="text-[16px] font-semibold text-paper">
                     Connected
                     {dropboxDisplay ? ` as ${dropboxDisplay}` : ""}
                     {dropboxEmail ? ` · ${dropboxEmail}` : ""}
@@ -156,7 +155,7 @@ export function FriendProfile({
                     type="button"
                     onClick={() => void disconnect()}
                     disabled={disconnecting}
-                    className="self-start rounded-full border border-line px-4 py-2 text-sm text-mist hover:text-paper disabled:opacity-60"
+                    className="self-start rounded-full border border-line px-4 py-2 text-sm font-semibold text-mist hover:text-paper disabled:opacity-60"
                   >
                     {disconnecting ? "Disconnecting…" : "Disconnect"}
                   </button>
@@ -164,12 +163,12 @@ export function FriendProfile({
               ) : dropboxConfigured ? (
                 <a
                   href="/api/dropbox/start"
-                  className="kiwi-btn mt-5 inline-flex rounded-full px-5 py-2.5 text-sm"
+                  className="kiwi-btn mt-5 inline-flex rounded-full px-5 py-3 text-[15px]"
                 >
                   Connect Dropbox
                 </a>
               ) : (
-                <p className="mt-5 rounded-2xl border border-line bg-bg-2 px-4 py-3 text-sm leading-6 text-paper">
+                <p className="mt-5 rounded-2xl border border-line bg-bg-2 px-4 py-3 text-[15px] leading-6 text-paper">
                   Dropbox keys aren’t on the server yet. Ask Vishnu to add them,
                   then come back and tap Connect.
                 </p>
@@ -177,16 +176,16 @@ export function FriendProfile({
             </div>
 
             {message ? (
-              <p className="rounded-2xl border border-line-strong bg-bg-0 px-4 py-3 text-sm text-paper">
+              <p className="rounded-2xl border border-line-strong bg-bg-0 px-4 py-3 text-sm font-medium text-paper">
                 {message}
               </p>
             ) : null}
 
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4 pt-1">
               <button
                 type="submit"
                 disabled={pending}
-                className="kiwi-btn rounded-full px-5 py-3 text-[15px] disabled:opacity-60"
+                className="kiwi-btn rounded-full px-6 py-3.5 text-[16px] disabled:opacity-60"
               >
                 {pending
                   ? "Saving…"
@@ -197,7 +196,7 @@ export function FriendProfile({
               {savedName ? (
                 <Link
                   href="/"
-                  className="text-[15px] font-medium text-kiwi hover:text-paper"
+                  className="text-[16px] font-bold text-kiwi hover:text-paper"
                 >
                   Open chat →
                 </Link>
@@ -205,20 +204,16 @@ export function FriendProfile({
             </div>
           </form>
         ) : (
-          <div className="mt-8 space-y-4">
-            <div className="rounded-[24px] border border-line bg-bg-0/80 p-5">
-              <p className="text-[12px] font-semibold tracking-[0.18em] text-kiwi uppercase">
-                Name
-              </p>
-              <p className="mt-2 font-display text-3xl text-paper">
+          <div className="mt-9 space-y-4">
+            <div className="rounded-[28px] border border-line bg-bg-0 p-5">
+              <p className="kiwi-kicker">Name</p>
+              <p className="mt-3 font-display text-[40px] leading-none text-paper">
                 {friendProfile.name || "Not set yet"}
               </p>
             </div>
-            <div className="rounded-[24px] border border-line bg-bg-0/80 p-5">
-              <p className="text-[12px] font-semibold tracking-[0.18em] text-kiwi uppercase">
-                Dropbox
-              </p>
-              <p className="mt-2 text-[17px] text-paper">
+            <div className="rounded-[28px] border border-line bg-bg-0 p-5">
+              <p className="kiwi-kicker">Dropbox</p>
+              <p className="mt-3 text-[20px] font-semibold text-paper">
                 {friendProfile.dropbox.connected
                   ? [
                       friendProfile.dropbox.displayName,
@@ -231,7 +226,7 @@ export function FriendProfile({
             </div>
             <Link
               href="/"
-              className="kiwi-btn inline-flex rounded-full px-5 py-3 text-[15px]"
+              className="kiwi-btn inline-flex rounded-full px-6 py-3.5 text-[16px]"
             >
               Back to chat
             </Link>

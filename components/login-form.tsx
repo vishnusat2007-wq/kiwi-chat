@@ -42,22 +42,25 @@ export function LoginForm() {
   return (
     <div className="kiwi-shell relative flex min-h-[100dvh] items-center justify-center px-4 py-12">
       <div className="kiwi-noise" />
-      <div className="kiwi-panel relative w-full max-w-[460px] rounded-[32px] p-8 md:p-10">
-        <KiwiMark className="h-16 w-16" />
-        <p className="mt-6 font-display text-[42px] leading-[0.9] tracking-tight text-paper md:text-[48px]">
+      <div className="kiwi-panel relative w-full max-w-[480px] overflow-hidden rounded-[36px] px-8 pt-10 pb-9 md:px-11 md:pt-12 md:pb-11">
+        <span className="kiwi-panel-accent" />
+        <div className="flex items-center justify-between gap-3">
+          <KiwiMark className="h-[4.25rem] w-[4.25rem]" />
+          <span className="rounded-full bg-kiwi px-3 py-1 text-[11px] font-extrabold tracking-[0.18em] text-[#11180f] uppercase">
+            Private
+          </span>
+        </div>
+        <h1 className="mt-7 font-display text-[52px] leading-[0.86] text-paper md:text-[58px]">
           Kiwi Chat
-        </p>
-        <p className="mt-4 text-[15px] leading-7 text-mist">
-          Private room for Vishnu, his friend, and the groks. Use the login you
-          were given — nothing to create.
+        </h1>
+        <p className="mt-5 max-w-[22rem] text-[16px] leading-7 text-mist">
+          Locked room for Vishnu, his friend, and the groks. Use the login you
+          were given. Nothing to create.
         </p>
 
-        <form className="mt-8 space-y-5" onSubmit={onSubmit}>
+        <form className="mt-9 space-y-5" onSubmit={onSubmit}>
           <div>
-            <label
-              htmlFor="username"
-              className="mb-2 block text-[12px] font-semibold tracking-[0.18em] text-kiwi uppercase"
-            >
+            <label htmlFor="username" className="kiwi-kicker mb-2 block">
               Username
             </label>
             <input
@@ -66,16 +69,13 @@ export function LoginForm() {
               autoComplete="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              className="w-full rounded-2xl border border-line bg-bg-0 px-4 py-3.5 text-[16px] text-paper outline-none placeholder:text-mist/60 focus:border-line-strong focus:ring-2 focus:ring-[rgba(198,241,85,0.22)]"
+              className="kiwi-field"
               placeholder="vishnu or friend"
               required
             />
           </div>
           <div>
-            <label
-              htmlFor="password"
-              className="mb-2 block text-[12px] font-semibold tracking-[0.18em] text-kiwi uppercase"
-            >
+            <label htmlFor="password" className="kiwi-kicker mb-2 block">
               Password
             </label>
             <input
@@ -85,14 +85,14 @@ export function LoginForm() {
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-2xl border border-line bg-bg-0 px-4 py-3.5 text-[16px] text-paper outline-none placeholder:text-mist/60 focus:border-line-strong focus:ring-2 focus:ring-[rgba(198,241,85,0.22)]"
+              className="kiwi-field"
               placeholder="The password you were sent"
               required
             />
           </div>
 
           {error ? (
-            <p className="rounded-2xl border border-[rgba(255,139,139,0.4)] bg-[rgba(255,139,139,0.1)] px-4 py-3 text-sm text-[#ffb4b4]">
+            <p className="rounded-2xl border border-[rgba(255,139,139,0.45)] bg-[rgba(255,139,139,0.12)] px-4 py-3 text-sm font-medium text-[#ffb4b4]">
               {error}
             </p>
           ) : null}
@@ -100,7 +100,7 @@ export function LoginForm() {
           <button
             type="submit"
             disabled={pending}
-            className="kiwi-btn w-full rounded-full px-4 py-3.5 text-[15px] disabled:opacity-60"
+            className="kiwi-btn mt-1 w-full rounded-full px-4 py-4 text-[17px] disabled:opacity-60"
           >
             {pending ? "Entering…" : "Enter the room"}
           </button>
