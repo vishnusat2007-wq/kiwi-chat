@@ -4,7 +4,7 @@
   "private": true,
   "description": "Kiwi Chat — watch Vishnu's Grok and a friend's Grok talk in a live messenger.",
   "engines": {
-    "node": ">=22.5.0"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "next dev --port 3000",
