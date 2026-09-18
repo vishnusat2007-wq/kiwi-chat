@@ -284,14 +284,14 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
               mobilePane === "list" ? "flex" : "hidden md:flex"
             } min-h-0 flex-col overflow-hidden border-r border-line bg-bg-1`}
           >
-            <div className="flex shrink-0 items-center gap-3 px-5 pt-5 pb-4">
-              <KiwiMark className="h-10 w-10" />
+            <div className="flex shrink-0 items-center gap-3 px-5 pt-6 pb-5">
+              <KiwiMark className="h-12 w-12" />
               <div className="min-w-0 flex-1">
-                <p className="font-display text-[22px] leading-none tracking-tight text-paper">
+                <p className="font-display text-[26px] leading-none tracking-tight text-paper">
                   Kiwi Chat
                 </p>
-                <p className="mt-1 text-[12px] text-mist">
-                  Signed in as {bootstrap.viewer.name}
+                <p className="mt-1.5 text-[13px] font-medium text-kiwi">
+                  {bootstrap.viewer.name}
                 </p>
               </div>
               <button
@@ -319,9 +319,9 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
             <div className="kiwi-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3">
               {filtered.length === 0 ? (
                 <div className="mx-2 mt-6 rounded-3xl border border-dashed border-line px-4 py-10 text-center">
-                  <p className="font-display text-lg text-paper">No threads yet</p>
-                  <p className="mt-2 text-sm text-mist">
-                    Bots create conversations with{" "}
+                  <p className="font-display text-xl text-paper">No threads yet</p>
+                  <p className="mt-2 text-sm leading-6 text-mist">
+                    Bots open conversations with{" "}
                     <code className="text-kiwi">POST /api/conversations</code>
                   </p>
                 </div>
@@ -387,15 +387,15 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
 
               <Link
                 href="/profile"
-                className="mt-4 block rounded-2xl border border-line bg-bg-0/60 p-3 hover:border-line-strong"
+                className="mt-4 block rounded-2xl border border-line-strong bg-bg-0 p-4 hover:bg-bg-2"
               >
-                <p className="text-[11px] font-medium tracking-[0.14em] text-mist uppercase">
+                <p className="text-[11px] font-semibold tracking-[0.16em] text-kiwi uppercase">
                   Friend setup
                 </p>
-                <p className="mt-1 text-sm text-paper">
+                <p className="mt-1.5 font-display text-xl leading-none text-paper">
                   {bootstrap.friendProfile.name || "Name not set yet"}
                 </p>
-                <p className="mt-0.5 text-[12px] text-mist">
+                <p className="mt-2 text-[13px] text-mist">
                   Dropbox{" "}
                   {bootstrap.friendProfile.dropbox.connected
                     ? `connected${
@@ -406,9 +406,13 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                     : "not connected"}
                 </p>
                 {needsFriendSetup ? (
-                  <p className="mt-2 text-[12px] text-kiwi">Open to check their details</p>
+                  <p className="mt-3 text-[13px] font-medium text-kiwi">
+                    Check their details →
+                  </p>
                 ) : viewerId === "friend" ? (
-                  <p className="mt-2 text-[12px] text-kiwi">Edit your name or Dropbox</p>
+                  <p className="mt-3 text-[13px] font-medium text-kiwi">
+                    Edit name or Dropbox →
+                  </p>
                 ) : null}
               </Link>
 
@@ -454,7 +458,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <StackedAvatars bots={active.members} />
                     <div className="min-w-0">
-                      <h1 className="truncate font-display text-xl tracking-tight text-paper">
+                      <h1 className="truncate font-display text-[26px] tracking-tight text-paper">
                         {active.title}
                       </h1>
                       <p className="truncate text-[12px] text-mist">
@@ -487,13 +491,13 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                 >
                   {messages.length === 0 ? (
                     <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center text-center">
-                      <KiwiMark className="h-16 w-16" />
-                      <p className="mt-5 font-display text-2xl text-paper">
-                        Start the thread
+                      <KiwiMark className="h-[4.5rem] w-[4.5rem]" />
+                      <p className="mt-6 font-display text-[34px] leading-none tracking-tight text-paper">
+                        The room is open.
                       </p>
-                      <p className="mt-2 text-sm leading-6 text-mist">
-                        Type below to talk with the groks. They reply here when
-                        their agents are connected.
+                      <p className="mt-4 text-[15px] leading-7 text-mist">
+                        Type below. The groks answer in this thread when their
+                        agents are on.
                       </p>
                     </div>
                   ) : (
@@ -590,7 +594,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                 <footer className="shrink-0 border-t border-line bg-bg-1/70 px-4 py-3 md:px-6">
                   <form
                     onSubmit={(event) => void sendMessage(event)}
-                    className="rounded-[22px] border border-line bg-bg-0/80 px-4 py-3"
+                    className="rounded-[26px] border border-line-strong bg-bg-0 px-4 py-4"
                   >
                     <label className="sr-only" htmlFor="message-draft">
                       Message
@@ -601,8 +605,8 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                       onChange={(event) => setDraft(event.target.value)}
                       onKeyDown={onComposerKeyDown}
                       rows={2}
-                      placeholder="Ask the groks how the project is going…"
-                      className="w-full resize-none bg-transparent text-[15px] leading-6 text-paper outline-none placeholder:text-mist/70"
+                      placeholder="Ask the groks how the project is going."
+                      className="w-full resize-none bg-transparent text-[16px] leading-6 text-paper outline-none placeholder:text-mist/70"
                     />
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <p className="min-w-0 truncate text-[12px] text-mist">
@@ -622,7 +626,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                         <button
                           type="submit"
                           disabled={sending || !draft.trim()}
-                          className="rounded-full bg-kiwi px-3 py-1.5 text-[12px] font-semibold text-[#11180f] hover:bg-[#d4f56f] disabled:opacity-50"
+                          className="kiwi-btn rounded-full px-4 py-2 text-[13px] disabled:opacity-50"
                         >
                           {sending ? "Sending…" : "Send"}
                         </button>
@@ -669,11 +673,11 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
             ) : (
               <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
                 <KiwiMark className="h-20 w-20" />
-                <p className="mt-6 font-display text-3xl text-paper">
-                  No conversation selected
+                <p className="mt-6 font-display text-[36px] leading-none text-paper">
+                  Pick a thread
                 </p>
-                <p className="mt-2 max-w-sm text-sm leading-6 text-mist">
-                  Pick a thread on the left, or let a bot open one with{" "}
+                <p className="mt-4 max-w-sm text-[15px] leading-7 text-mist">
+                  Choose Kiwi Lab on the left, or let a grok open one with{" "}
                   <code className="text-kiwi">POST /api/conversations</code>.
                 </p>
               </div>

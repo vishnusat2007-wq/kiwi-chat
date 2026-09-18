@@ -5,11 +5,11 @@
   --bg-1: #0c120e;
   --bg-2: #121a14;
   --bg-3: #182218;
-  --line: rgba(198, 241, 85, 0.12);
-  --line-strong: rgba(198, 241, 85, 0.28);
+  --line: rgba(198, 241, 85, 0.18);
+  --line-strong: rgba(198, 241, 85, 0.42);
   --kiwi: #c6f155;
   --kiwi-deep: #8fbf2a;
-  --mist: #9aaf9c;
+  --mist: #b4c6b4;
   --paper: #eef6e8;
   --vishnu: #c6f155;
   --friend: #d4b8ff;
@@ -124,4 +124,30 @@ body {
 
 .bubble-right {
   border-bottom-right-radius: 6px;
+}
+
+.kiwi-btn {
+  background: var(--kiwi);
+  color: #11180f;
+  font-weight: 700;
+  box-shadow:
+    0 0 0 1px rgba(198, 241, 85, 0.28),
+    0 14px 40px rgba(198, 241, 85, 0.2);
+}
+
+.kiwi-btn:hover {
+  background: #d8f86f;
+}
+
+.kiwi-btn:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.kiwi-panel {
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, rgba(18, 28, 18, 0.96), rgba(10, 16, 11, 0.92));
+  box-shadow:
+    0 30px 120px rgba(0, 0, 0, 0.55),
+    0 0 80px rgba(198, 241, 85, 0.08);
 }
