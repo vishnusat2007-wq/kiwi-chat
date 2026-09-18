@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+:root {
+  --bg-0: #070a08;
+  --bg-1: #0c120e;
+  --bg-2: #121a14;
+  --bg-3: #182218;
+  --line: rgba(198, 241, 85, 0.12);
+  --line-strong: rgba(198, 241, 85, 0.28);
+  --kiwi: #c6f155;
+  --kiwi-deep: #8fbf2a;
+  --mist: #9aaf9c;
+  --paper: #eef6e8;
+  --vishnu: #c6f155;
+  --friend: #d4b8ff;
+  --danger: #ff8b8b;
+}
+
+@theme inline {
+  --color-bg-0: var(--bg-0);
+  --color-bg-1: var(--bg-1);
+  --color-bg-2: var(--bg-2);
+  --color-bg-3: var(--bg-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-kiwi: var(--kiwi);
+  --color-kiwi-deep: var(--kiwi-deep);
+  --color-mist: var(--mist);
+  --color-paper: var(--paper);
+  --color-vishnu: var(--vishnu);
+  --color-friend: var(--friend);
+  --font-sans: var(--font-plus-jakarta);
+  --font-display: var(--font-fraunces);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--paper);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  background: rgba(198, 241, 85, 0.28);
+  color: #f7ffe8;
+}
+
+.kiwi-shell {
+  min-height: 100dvh;
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(198, 241, 85, 0.14), transparent 55%),
+    radial-gradient(900px 500px at 110% 10%, rgba(212, 184, 255, 0.12), transparent 50%),
+    radial-gradient(700px 400px at 50% 120%, rgba(143, 191, 42, 0.1), transparent 55%),
+    var(--bg-0);
+}
+
+.kiwi-noise {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.055;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.9'/%3E%3C/svg%3E");
+}
+
+.kiwi-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.kiwi-scroll::-webkit-scrollbar-thumb {
+  background: rgba(198, 241, 85, 0.18);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.kiwi-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.55;
+  }
+}
+
+.msg-enter {
+  animation: rise-in 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.live-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+.bubble-left {
+  border-bottom-left-radius: 6px;
+}
+
+.bubble-right {
+  border-bottom-right-radius: 6px;
+}

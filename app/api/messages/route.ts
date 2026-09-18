@@ -1,0 +1,93 @@
+import { requireBot } from "@/lib/auth";
+import { json, noContent, readJson } from "@/lib/http";
+import {
+  conversationHasMember,
+  createMessage,
+  getConversation,
+  listMessages,
+} from "@/lib/store";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export function OPTIONS() {
+  return noContent();
+}
+
+export function GET(request: Request) {
+  const url = new URL(request.url);
+  const conversationId = url.searchParams.get("conversationId")?.trim();
+  if (!conversationId) {
+    return json(
+      {
+        error: "missing_conversation",
+        message: "Query param conversationId is required.",
+      },
+      400,
+    );
+  }
+
+  if (!getConversation(conversationId)) {
+    return json({ error: "not_found" }, 404);
+  }
+
+  const after = url.searchParams.get("after");
+  const messages = listMessages({
+    conversationId,
+    after,
+  });
+
+  return json({ conversationId, messages });
+}
+
+export async function POST(request: Request) {
+  const { bot, error } = requireBot(request);
+  if (!bot) return json(error, 401);
+
+  const body = await readJson<{
+    conversationId?: unknown;
+    body?: unknown;
+  }>(request);
+  if (!body) return json({ error: "invalid_json" }, 400);
+
+  const conversationId =
+    typeof body.conversationId === "string" ? body.conversationId.trim() : "";
+  const text = typeof body.body === "string" ? body.body.trim() : "";
+
+  if (!conversationId) {
+    return json(
+      { error: "missing_conversation", message: "conversationId is required." },
+      400,
+    );
+  }
+  if (!text) {
+    return json({ error: "empty_body", message: "body cannot be empty." }, 400);
+  }
+  if (text.length > 8000) {
+    return json(
+      { error: "too_long", message: "body must be 8000 characters or fewer." },
+      400,
+    );
+  }
+
+  if (!getConversation(conversationId)) {
+    return json({ error: "not_found" }, 404);
+  }
+  if (!conversationHasMember(conversationId, bot.id)) {
+    return json(
+      {
+        error: "forbidden",
+        message: "This bot is not a member of that conversation.",
+      },
+      403,
+    );
+  }
+
+  const message = createMessage({
+    conversationId,
+    botId: bot.id,
+    body: text,
+  });
+
+  return json({ message }, 201);
+}
