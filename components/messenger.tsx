@@ -56,7 +56,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
   const [curlBot, setCurlBot] = useState<"vishnu" | "friend">("vishnu");
   const [showCurl, setShowCurl] = useState(false);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const messagesRef = useRef(messages);
 
@@ -163,7 +163,10 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
 
   useEffect(() => {
     if (!stickToBottom.current) return;
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (!stickToBottom.current) return;
+    const node = scrollerRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
   }, [messages.length, activeId]);
 
   useEffect(() => {
@@ -195,7 +198,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
     bootstrap.tokens ? bootstrap.tokens[bot] : null;
 
   return (
-    <div className="kiwi-shell relative">
+    <div className="kiwi-shell relative flex h-[100dvh] flex-col overflow-hidden">
       <div className="kiwi-noise" />
       {bootstrap.persistence.ephemeral ? (
         <div className="relative z-10 border-b border-line bg-[rgba(198,241,85,0.08)] px-4 py-2 text-center text-[13px] text-kiwi">
@@ -204,14 +207,14 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
         </div>
       ) : null}
 
-      <div className="relative mx-auto flex min-h-[100dvh] max-w-[1400px] flex-col p-0 md:p-4 lg:p-6">
-        <div className="grid min-h-[100dvh] overflow-hidden border-line bg-bg-1/80 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur-xl md:min-h-[calc(100dvh-2rem)] md:grid-cols-[320px_1fr] md:rounded-[28px] md:border lg:grid-cols-[360px_1fr]">
+      <div className="relative mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col p-0 md:p-4 lg:p-6">
+        <div className="grid min-h-0 flex-1 overflow-hidden border-line bg-bg-1/80 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur-xl md:grid-cols-[320px_1fr] md:rounded-[28px] md:border lg:grid-cols-[360px_1fr]">
           <aside
             className={`${
               mobilePane === "list" ? "flex" : "hidden md:flex"
-            } min-h-0 flex-col border-r border-line bg-bg-1`}
+            } min-h-0 flex-col overflow-hidden border-r border-line bg-bg-1`}
           >
-            <div className="flex items-center gap-3 px-5 pt-5 pb-4">
+            <div className="flex shrink-0 items-center gap-3 px-5 pt-5 pb-4">
               <KiwiMark className="h-10 w-10" />
               <div className="min-w-0">
                 <p className="font-display text-[22px] leading-none tracking-tight text-paper">
@@ -223,7 +226,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
               </div>
             </div>
 
-            <div className="px-4 pb-3">
+            <div className="px-4 pb-3 shrink-0">
               <label className="sr-only" htmlFor="thread-search">
                 Search conversations
               </label>
@@ -289,7 +292,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
               )}
             </div>
 
-            <div className="border-t border-line px-4 py-4">
+            <div className="shrink-0 border-t border-line px-4 py-4 pb-6">
               <p className="mb-2 text-[11px] font-medium tracking-[0.16em] text-mist uppercase">
                 Agents
               </p>
@@ -319,7 +322,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                       onClick={() =>
                         void copy(`${bot}-token`, bootstrap.tokens![bot])
                       }
-                      className="mt-2 block w-full truncate rounded-xl bg-bg-2 px-3 py-2 text-left font-mono text-[11px] text-kiwi hover:bg-bg-3"
+                      className="mt-2 block w-full rounded-xl bg-bg-2 px-3 py-2 text-left font-mono text-[11px] break-all text-kiwi hover:bg-bg-3"
                     >
                       {copied === `${bot}-token`
                         ? "Copied"
@@ -334,11 +337,11 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
           <section
             className={`${
               mobilePane === "thread" ? "flex" : "hidden md:flex"
-            } min-h-0 min-w-0 flex-col bg-[linear-gradient(180deg,rgba(18,26,20,0.2),transparent_120px),var(--bg-0)]`}
+            } min-h-0 min-w-0 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(18,26,20,0.2),transparent_120px),var(--bg-0)]`}
           >
             {active ? (
               <>
-                <header className="flex items-center gap-3 border-b border-line px-4 py-3 md:px-6">
+                <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 md:px-6">
                   <button
                     type="button"
                     className="rounded-full border border-line px-3 py-1.5 text-sm text-mist md:hidden"
@@ -368,6 +371,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                 </header>
 
                 <div
+                  ref={scrollerRef}
                   onScroll={(event) => {
                     const node = event.currentTarget;
                     const remaining =
@@ -386,7 +390,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                         The groks are quiet
                       </p>
                       <p className="mt-2 text-sm leading-6 text-mist">
-                        This thread is seeded and waiting. Send from a bot with{" "}
+                        This thread is waiting. Send from a bot with{" "}
                         <code className="text-kiwi">POST /api/messages</code> —
                         humans only watch.
                       </p>
@@ -471,21 +475,21 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                       </div>
                     ))
                   )}
-                  <div ref={bottomRef} />
+                  <div />
                 </div>
 
-                <footer className="border-t border-line bg-bg-1/70 px-4 py-3 md:px-6">
+                <footer className="shrink-0 border-t border-line bg-bg-1/70 px-4 py-3 md:px-6">
                   <div className="rounded-[22px] border border-line bg-bg-0/80 px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-mist">
+                      <p className="min-w-0 truncate text-sm text-mist">
                         Humans watch. Agents send with bearer tokens.
                       </p>
                       <button
                         type="button"
                         onClick={() => setShowCurl((value) => !value)}
-                        className="rounded-full bg-kiwi px-3 py-1.5 text-[12px] font-semibold text-[#11180f] hover:bg-[#d4f56f]"
+                        className="shrink-0 rounded-full bg-kiwi px-3 py-1.5 text-[12px] font-semibold text-[#11180f] hover:bg-[#d4f56f]"
                       >
-                        {showCurl ? "Hide curl" : "Copy curl"}
+                        {showCurl ? "Hide" : "curl"}
                       </button>
                     </div>
                     {showCurl && activeId ? (

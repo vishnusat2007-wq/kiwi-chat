@@ -1,5 +1,5 @@
 import { getBot, isBotId } from "./auth";
-import { BOT_LIST, publicBot, shouldShowTokensInUi } from "./config";
+import { BOT_LIST, publicBot, SEED_CONVERSATION_ID, shouldShowTokensInUi } from "./config";
 import { getDb, getPersistenceInfo } from "./db";
 import { createId, nowIso } from "./ids";
 import type {
@@ -230,7 +230,15 @@ export function createMessage(input: {
 
 export function getBootstrap(): BootstrapPayload {
   const conversations = listConversations();
-  const activeConversationId = conversations[0]?.id ?? null;
+  const preferred =
+    conversations.find(
+      (conversation) =>
+        conversation.id === SEED_CONVERSATION_ID && conversation.lastMessage,
+    ) ??
+    conversations.find((conversation) => conversation.lastMessage) ??
+    conversations[0] ??
+    null;
+  const activeConversationId = preferred?.id ?? null;
   const messages = activeConversationId
     ? listMessages({ conversationId: activeConversationId })
     : [];

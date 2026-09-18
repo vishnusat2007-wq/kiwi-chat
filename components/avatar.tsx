@@ -29,13 +29,14 @@ export function BotAvatar({
 }
 
 export function StackedAvatars({ bots }: { bots: PublicBot[] }) {
+  const shown = bots.slice(0, 2);
   return (
-    <span className="relative inline-flex h-8 w-11 shrink-0 items-center">
-      {bots.slice(0, 2).map((bot, index) => (
+    <span className="relative inline-flex h-9 w-12 shrink-0 items-center">
+      {shown.map((bot, index) => (
         <span
           key={bot.id}
-          className="absolute top-0"
-          style={{ left: index * 14 }}
+          className="absolute top-0.5"
+          style={{ left: index * 18, zIndex: index + 1 }}
         >
           <span className="inline-block rounded-full ring-2 ring-[#121a14]">
             <BotAvatar bot={bot} size="sm" />
