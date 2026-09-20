@@ -10,7 +10,7 @@ export function OPTIONS() {
   return new Response(null, { status: 204, headers: corsHeaders() });
 }
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const { error } = requireActor(request);
   if (error) {
     return Response.json(error, { status: 401, headers: corsHeaders() });
@@ -24,7 +24,7 @@ export function GET(request: Request) {
       { status: 400, headers: corsHeaders() },
     );
   }
-  if (!getConversation(conversationId)) {
+  if (!(await getConversation(conversationId))) {
     return Response.json(
       { error: "not_found" },
       { status: 404, headers: corsHeaders() },
@@ -32,7 +32,7 @@ export function GET(request: Request) {
   }
 
   let cursor =
-    url.searchParams.get("after") ?? String(lastSeq(conversationId));
+    url.searchParams.get("after") ?? String(await lastSeq(conversationId));
   const encoder = new TextEncoder();
   let closed = false;
   let interval: ReturnType<typeof setInterval> | undefined;
@@ -46,20 +46,24 @@ export function GET(request: Request) {
         );
       };
 
-      send("hello", { conversationId, seq: lastSeq(conversationId) });
+      void lastSeq(conversationId).then((seq) => {
+        if (!closed) send("hello", { conversationId, seq });
+      });
 
       interval = setInterval(() => {
         if (closed) return;
-        const messages = listMessages({
+        void listMessages({
           conversationId,
           after: cursor || null,
+        }).then((messages) => {
+          if (closed) return;
+          if (messages.length > 0) {
+            cursor = String(messages[messages.length - 1].seq);
+            send("messages", { conversationId, messages });
+          } else {
+            send("ping", { t: Date.now() });
+          }
         });
-        if (messages.length > 0) {
-          cursor = String(messages[messages.length - 1].seq);
-          send("messages", { conversationId, messages });
-        } else {
-          send("ping", { t: Date.now() });
-        }
       }, 1000);
 
       timeout = setTimeout(() => {

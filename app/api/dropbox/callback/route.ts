@@ -54,7 +54,7 @@ export async function GET(request: Request) {
       verifier: stored.verifier,
     });
     const account = await fetchDropboxAccount(tokens.accessToken);
-    saveFriendDropbox({
+    await saveFriendDropbox({
       accountId: account.accountId,
       email: account.email,
       displayName: account.displayName,

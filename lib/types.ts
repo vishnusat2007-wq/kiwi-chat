@@ -33,10 +33,12 @@ export type Conversation = {
   lastMessage: Message | null;
 };
 
+export type PersistenceDriver = "convex" | "node:sqlite";
+
 export type PersistenceInfo = {
   ephemeral: boolean;
   location: string;
-  driver: "node:sqlite";
+  driver: PersistenceDriver;
 };
 
 export type FriendDropboxStatus = {

@@ -83,7 +83,28 @@ export function isVercelRuntime() {
   return Boolean(process.env.VERCEL);
 }
 
+/** Dev deployment for project kiwi-chat (team vishnu-satyavarapu). */
+export const CONVEX_PROJECT = "kiwi-chat";
+export const CONVEX_DEPLOYMENT_NAME = "flippant-swan-205";
+export const CONVEX_CLOUD_URL = "https://flippant-swan-205.convex.cloud";
+export const CONVEX_DASHBOARD_URL =
+  "https://dashboard.convex.dev/t/vishnu-satyavarapu/kiwi-chat/flippant-swan-205";
+
+export function convexDeploymentUrl() {
+  if (process.env.KIWI_USE_SQLITE === "1") return "";
+  return (
+    process.env.NEXT_PUBLIC_CONVEX_URL?.trim() ||
+    process.env.CONVEX_URL?.trim() ||
+    CONVEX_CLOUD_URL
+  );
+}
+
+export function isConvexConfigured() {
+  return Boolean(convexDeploymentUrl());
+}
+
 export function isEphemeralPersistence() {
+  if (isConvexConfigured()) return false;
   if (process.env.KIWI_DB_PATH) return false;
   return isVercelRuntime();
 }

@@ -3,6 +3,8 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { BOTS, isEphemeralPersistence, SEED_CONVERSATION_ID } from "./config";
 import { nowIso } from "./ids";
+import { QUIET_ROOM_ID, SEED_MESSAGES, SEED_TITLE } from "./seed";
+import type { PersistenceInfo } from "./types";
 
 type GlobalDb = typeof globalThis & {
   __kiwiDb?: DatabaseSync;
@@ -17,12 +19,12 @@ function resolveDbPath() {
   return path.join(process.cwd(), "data", "kiwi.db");
 }
 
-export function getPersistenceInfo() {
+export function getPersistenceInfo(): PersistenceInfo {
   const location = resolveDbPath();
   return {
     ephemeral: isEphemeralPersistence(),
     location,
-    driver: "node:sqlite" as const,
+    driver: "node:sqlite",
   };
 }
 
@@ -81,15 +83,44 @@ function migrate(db: DatabaseSync) {
       dropbox_connected_at TEXT,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS humans (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS bots (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      color TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
 
   ensureColumn(db, "messages", "author_kind", "TEXT NOT NULL DEFAULT 'bot'");
 
   db.exec(`
-    DELETE FROM messages WHERE conversation_id = 'cnv_quiet_room';
-    DELETE FROM conversation_members WHERE conversation_id = 'cnv_quiet_room';
-    DELETE FROM conversations WHERE id = 'cnv_quiet_room';
+    DELETE FROM messages WHERE conversation_id = '${QUIET_ROOM_ID}';
+    DELETE FROM conversation_members WHERE conversation_id = '${QUIET_ROOM_ID}';
+    DELETE FROM conversations WHERE id = '${QUIET_ROOM_ID}';
   `);
+
+  const createdAt = nowIso();
+  db.prepare(
+    "INSERT OR IGNORE INTO humans (id, username, display_name, created_at) VALUES ('vishnu', 'vishnu', 'Vishnu', ?)",
+  ).run(createdAt);
+  db.prepare(
+    "INSERT OR IGNORE INTO humans (id, username, display_name, created_at) VALUES ('friend', 'friend', 'Friend', ?)",
+  ).run(createdAt);
+  db.prepare(
+    "INSERT OR IGNORE INTO bots (id, name, full_name, color, created_at) VALUES ('vishnu', 'Vishnu', 'Vishnu’s Grok', '#C6F155', ?)",
+  ).run(createdAt);
+  db.prepare(
+    "INSERT OR IGNORE INTO bots (id, name, full_name, color, created_at) VALUES ('friend', 'Friend', 'Friend’s Grok', '#D4B8FF', ?)",
+  ).run(createdAt);
 
   db.prepare(
     "INSERT OR IGNORE INTO friend_profiles (id, name, updated_at) VALUES ('friend', '', ?)",
@@ -115,39 +146,15 @@ function seedIfEmpty(db: DatabaseSync) {
 
   insertConversation.run(
     SEED_CONVERSATION_ID,
-    "Kiwi Lab",
+    SEED_TITLE,
     createdAt,
     createdAt,
   );
   insertMember.run(SEED_CONVERSATION_ID, "vishnu");
   insertMember.run(SEED_CONVERSATION_ID, "friend");
 
-  const starter: Array<{ id: string; botId: "vishnu" | "friend"; body: string }> =
-    [
-      {
-        id: "msg_seed_01",
-        botId: "vishnu",
-        body: "Channel’s up. Kiwi Chat is live — Vishnu and his friend can talk here too.",
-      },
-      {
-        id: "msg_seed_02",
-        botId: "friend",
-        body: "Copy. I’ll keep pinging the HTTP API so the thread actually moves.",
-      },
-      {
-        id: "msg_seed_03",
-        botId: "vishnu",
-        body: "Deal. Short messages. Humans type in this thread; groks answer through their tokens.",
-      },
-      {
-        id: "msg_seed_04",
-        botId: "friend",
-        body: "🥝 First real line from the friend grok. Ask us how the project’s going whenever you want.",
-      },
-    ];
-
   let cursor = Date.parse(createdAt);
-  for (const message of starter) {
+  for (const message of SEED_MESSAGES) {
     cursor += 18_000;
     insertMessage.run(
       message.id,

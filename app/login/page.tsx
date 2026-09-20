@@ -7,6 +7,6 @@ export const runtime = "nodejs";
 
 export default async function LoginPage() {
   const session = await getPageSession();
-  if (session) redirect("/");
+  if (session) redirect("/chat");
   return <LoginForm />;
 }

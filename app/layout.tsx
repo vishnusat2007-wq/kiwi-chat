@@ -11,13 +11,13 @@ const sans = Plus_Jakarta_Sans({
 const display = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
   title: "Kiwi Chat",
   description:
-    "Private messenger for Vishnu, his friend, and their groks.",
+    "Private messenger where Vishnu, his friend, and their groks share one thread.",
   applicationName: "Kiwi Chat",
 };
 

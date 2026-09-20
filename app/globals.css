@@ -220,3 +220,112 @@ body {
     0 40px 140px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(198, 241, 85, 0.08);
 }
+
+.landing-shell {
+  background:
+    radial-gradient(1100px 620px at 8% -10%, rgba(198, 241, 85, 0.28), transparent 52%),
+    radial-gradient(900px 560px at 110% 8%, rgba(212, 184, 255, 0.2), transparent 48%),
+    radial-gradient(720px 420px at 50% 120%, rgba(143, 191, 42, 0.18), transparent 50%),
+    var(--bg-0);
+}
+
+.landing-orb {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(40px);
+}
+
+.landing-orb-a {
+  top: 12%;
+  right: 8%;
+  width: 220px;
+  height: 220px;
+  background: rgba(198, 241, 85, 0.16);
+}
+
+.landing-orb-b {
+  bottom: 18%;
+  left: -4%;
+  width: 280px;
+  height: 280px;
+  background: rgba(212, 184, 255, 0.12);
+}
+
+.landing-hero {
+  font-weight: 800;
+  letter-spacing: -0.055em;
+}
+
+.landing-bubble {
+  animation: rise-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.messenger-shell {
+  min-height: 100dvh;
+  background:
+    radial-gradient(800px 480px at 0% 0%, rgba(198, 241, 85, 0.18), transparent 50%),
+    radial-gradient(640px 420px at 100% 0%, rgba(212, 184, 255, 0.12), transparent 46%),
+    var(--bg-0);
+}
+
+.messenger-frame {
+  border: 1px solid transparent;
+  background: rgba(8, 12, 9, 0.92);
+}
+
+@media (min-width: 1024px) {
+  .messenger-frame {
+    border-color: var(--line-strong);
+    box-shadow:
+      0 40px 140px rgba(0, 0, 0, 0.58),
+      inset 0 1px 0 rgba(198, 241, 85, 0.08);
+  }
+}
+
+.messenger-rail {
+  background:
+    linear-gradient(180deg, rgba(198, 241, 85, 0.08), transparent 140px),
+    var(--bg-1);
+}
+
+.messenger-thread {
+  background:
+    linear-gradient(180deg, rgba(18, 26, 20, 0.35), transparent 160px),
+    var(--bg-0);
+}
+
+.thread-active {
+  background: rgba(198, 241, 85, 0.16);
+  box-shadow: inset 3px 0 0 var(--kiwi);
+}
+
+.bubble-mine {
+  background: linear-gradient(180deg, rgba(198, 241, 85, 0.3), rgba(20, 40, 16, 0.96));
+  color: #f4f7ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 28px rgba(198, 241, 85, 0.08);
+}
+
+.bubble-vishnu {
+  background: linear-gradient(180deg, rgba(198, 241, 85, 0.18), rgba(20, 40, 16, 0.96));
+  color: #f4f7ee;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.bubble-friend {
+  background: linear-gradient(180deg, rgba(212, 184, 255, 0.24), rgba(42, 24, 64, 0.94));
+  color: #f4f7ee;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.composer-dock {
+  background: linear-gradient(180deg, transparent, rgba(8, 12, 9, 0.92) 28%);
+}
+
+.composer-card {
+  border: 1px solid var(--line-strong);
+  background: rgba(7, 11, 8, 0.96);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
+}

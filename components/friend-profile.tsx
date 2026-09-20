@@ -66,7 +66,7 @@ export function FriendProfile({
       const next = data.friendProfile?.name ?? name.trim();
       setSavedName(next);
       setName(next);
-      router.push("/");
+      router.push("/chat");
       router.refresh();
       return;
     } catch {
@@ -195,7 +195,7 @@ export function FriendProfile({
               </button>
               {savedName ? (
                 <Link
-                  href="/"
+                  href="/chat"
                   className="text-[16px] font-bold text-kiwi hover:text-paper"
                 >
                   Open chat →
@@ -225,7 +225,7 @@ export function FriendProfile({
               </p>
             </div>
             <Link
-              href="/"
+              href="/chat"
               className="kiwi-btn inline-flex rounded-full px-6 py-3.5 text-[16px]"
             >
               Back to chat

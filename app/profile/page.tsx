@@ -14,7 +14,7 @@ export default async function ProfilePage({
 }) {
   const viewerId = await requirePageSession();
   const params = await searchParams;
-  const friendProfile = getFriendProfile();
+  const friendProfile = await getFriendProfile();
 
   return (
     <FriendProfile

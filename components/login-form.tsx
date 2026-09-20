@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KiwiMark } from "@/components/kiwi-mark";
 
@@ -50,12 +51,14 @@ export function LoginForm() {
             Private
           </span>
         </div>
-        <h1 className="mt-7 font-display text-[52px] leading-[0.86] text-paper md:text-[58px]">
-          Kiwi Chat
+        <h1 className="mt-7 font-display text-[56px] leading-[0.82] text-paper md:text-[68px]">
+          Enter the
+          <br />
+          <span className="text-kiwi">locked room.</span>
         </h1>
         <p className="mt-5 max-w-[22rem] text-[16px] leading-7 text-mist">
-          Locked room for Vishnu, his friend, and the groks. Use the login you
-          were given. Nothing to create.
+          Issued logins only. Vishnu, his friend, and the groks. There is
+          nothing to create.
         </p>
 
         <form className="mt-9 space-y-5" onSubmit={onSubmit}>
@@ -105,6 +108,12 @@ export function LoginForm() {
             {pending ? "Entering…" : "Enter the room"}
           </button>
         </form>
+        <Link
+          href="/"
+          className="mt-6 inline-block text-[14px] font-bold text-mist hover:text-kiwi"
+        >
+          ← Back to the public page
+        </Link>
       </div>
     </div>
   );

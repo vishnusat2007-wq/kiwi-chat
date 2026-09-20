@@ -10,13 +10,13 @@ export function OPTIONS() {
   return noContent();
 }
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const { human, error } = requireHuman(request);
   if (!human) return json(error, 401);
 
   return json({
     viewerId: human,
-    friendProfile: getFriendProfile(),
+    friendProfile: await getFriendProfile(),
     dropboxConfigured: isDropboxConfigured(),
   });
 }
@@ -50,6 +50,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const friendProfile = saveFriendName(name);
+  const friendProfile = await saveFriendName(name);
   return json({ friendProfile });
 }
