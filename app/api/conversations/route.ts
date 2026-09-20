@@ -9,10 +9,10 @@ export function OPTIONS() {
   return noContent();
 }
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const { error } = requireActor(request);
   if (error) return json(error, 401);
-  return json({ conversations: listConversations() });
+  return json({ conversations: await listConversations() });
 }
 
 export async function POST(request: Request) {
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const conversation = createConversation({
+  const conversation = await createConversation({
     title,
     memberIds: Array.from(memberIds),
   });

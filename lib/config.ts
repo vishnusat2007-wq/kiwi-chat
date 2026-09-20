@@ -83,7 +83,20 @@ export function isVercelRuntime() {
   return Boolean(process.env.VERCEL);
 }
 
+export function convexDeploymentUrl() {
+  return (
+    process.env.NEXT_PUBLIC_CONVEX_URL?.trim() ||
+    process.env.CONVEX_URL?.trim() ||
+    ""
+  );
+}
+
+export function isConvexConfigured() {
+  return Boolean(convexDeploymentUrl());
+}
+
 export function isEphemeralPersistence() {
+  if (isConvexConfigured()) return false;
   if (process.env.KIWI_DB_PATH) return false;
   return isVercelRuntime();
 }

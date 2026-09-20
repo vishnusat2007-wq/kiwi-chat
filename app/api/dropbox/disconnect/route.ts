@@ -9,7 +9,7 @@ export function OPTIONS() {
   return noContent();
 }
 
-export function POST(request: Request) {
+export async function POST(request: Request) {
   const { human, error } = requireHuman(request);
   if (!human) return json(error, 401);
   if (human !== "friend") {
@@ -22,5 +22,5 @@ export function POST(request: Request) {
     );
   }
 
-  return json({ friendProfile: clearFriendDropbox() });
+  return json({ friendProfile: await clearFriendDropbox() });
 }

@@ -7,11 +7,11 @@ import { getFriendProfile } from "@/lib/store";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const { human, error } = requireHuman(request);
   if (!human) return json(error, 401);
 
-  const friendProfile = getFriendProfile();
+  const friendProfile = await getFriendProfile();
   return json({
     user: {
       id: human,

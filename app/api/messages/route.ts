@@ -14,7 +14,7 @@ export function OPTIONS() {
   return noContent();
 }
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const { error } = requireActor(request);
   if (error) return json(error, 401);
 
@@ -30,12 +30,12 @@ export function GET(request: Request) {
     );
   }
 
-  if (!getConversation(conversationId)) {
+  if (!(await getConversation(conversationId))) {
     return json({ error: "not_found" }, 404);
   }
 
   const after = url.searchParams.get("after");
-  const messages = listMessages({
+  const messages = await listMessages({
     conversationId,
     after,
   });
@@ -73,10 +73,13 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!getConversation(conversationId)) {
+  if (!(await getConversation(conversationId))) {
     return json({ error: "not_found" }, 404);
   }
-  if (actor.kind === "bot" && !conversationHasMember(conversationId, actor.id)) {
+  if (
+    actor.kind === "bot" &&
+    !(await conversationHasMember(conversationId, actor.id))
+  ) {
     return json(
       {
         error: "forbidden",
@@ -86,7 +89,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const message = createMessage({
+  const message = await createMessage({
     conversationId,
     authorId: actor.id,
     authorKind: actor.kind,

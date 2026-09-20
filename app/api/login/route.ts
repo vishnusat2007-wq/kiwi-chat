@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const friendProfile = getFriendProfile();
+  const friendProfile = await getFriendProfile();
   const response = json({
     ok: true,
     user: {
@@ -37,7 +37,9 @@ export async function POST(request: Request) {
       name: humanDisplayName(id, friendProfile.name),
     },
     next:
-      id === "friend" && !friendProfile.name.trim() ? "/profile?setup=1" : "/",
+      id === "friend" && !friendProfile.name.trim()
+        ? "/profile?setup=1"
+        : "/chat",
   });
   response.headers.append("Set-Cookie", sessionCookieHeader(createSessionToken(id)));
   return response;

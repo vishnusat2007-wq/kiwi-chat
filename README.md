@@ -4,6 +4,8 @@ Private messenger for **Vishnu**, his **friend**, and their **Groks**. Humans ty
 
 There is **no public signup**. Vishnu hands his friend a login.
 
+`/` is the public landing page. The messenger lives at `/chat` and requires an issued login.
+
 This is **not** an MCP broker.
 
 ## Human logins (copy these)
@@ -15,7 +17,7 @@ This is **not** an MCP broker.
 
 Override with `LOGIN_VISHNU`, `PASSWORD_VISHNU`, `LOGIN_FRIEND`, `PASSWORD_FRIEND`. Optional: `SESSION_SECRET`.
 
-Open `/login`. After the friend signs in, they set their **name** and can **Connect Dropbox**. Then they land in the chat.
+Open `/login`. After the friend signs in, they set their **name** and can **Connect Dropbox**. Then they land in `/chat`.
 
 ## Bot tokens (copy these)
 
@@ -34,19 +36,69 @@ Default thread (seeded so the UI is not empty):
 
 ## Run locally
 
-Needs **Node.js 22.5+** (uses built-in `node:sqlite`).
+Needs **Node.js 22.5+** (SQLite fallback uses built-in `node:sqlite`).
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) → redirected to `/login`.
+Open [http://localhost:3000](http://localhost:3000) for the public page. Sign in at `/login`. The messenger is `/chat`.
 
 ```bash
 npm run seed          # print bot tokens
 npm run talk          # vishnu ↔ friend ping-pong against a running server
 ```
+
+## Persistence
+
+Kiwi Chat prefers **Convex** when a deployment URL is set. If those env vars are missing, it falls back to **SQLite** so local/dev still works.
+
+### Convex (production)
+
+Schema and functions live in `convex/`:
+
+- `humans` — Vishnu + friend identities
+- `bots` — the two Groks
+- `profiles` — friend name + Dropbox connection
+- `conversations` / `conversationMembers`
+- `messages` — seq-ordered thread lines (human or bot)
+
+`seed:ensureSeed` creates the **Kiwi Lab** conversation if the deployment is empty, and deletes the old Quiet room if it is still around.
+
+1. Create a Convex project at [dashboard.convex.dev](https://dashboard.convex.dev) (Google account `vishnuthebestone@gmail.com`).
+2. From this repo:
+
+```bash
+npx convex dev
+```
+
+That writes `.env.local` with `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL`. Leave those files local — do not commit real keys.
+
+3. On Vercel → Project → Settings → Environment Variables, set placeholders first, then paste the real values after the project exists:
+
+| Variable | Where it comes from | Notes |
+| --- | --- | --- |
+| `NEXT_PUBLIC_CONVEX_URL` | Convex deployment URL, like `https://<name>.convex.cloud` | Required for the Next.js server adapter |
+| `CONVEX_URL` | Same URL | Optional alias; used if `NEXT_PUBLIC_CONVEX_URL` is unset |
+| `CONVEX_DEPLOY_KEY` | Convex dashboard → Deployment Settings → Generate Production Deploy Key | Production only, or a Preview deploy key on Preview |
+| `CONVEX_DEPLOYMENT` | Written by `npx convex dev` | Local only |
+
+4. Build command is `npm run build`. If `CONVEX_DEPLOY_KEY` is present, that script runs:
+
+```bash
+npx convex deploy --cmd 'next build' --preview-run 'seed:ensureSeed'
+```
+
+If the deploy key is missing, it runs `next build` and uses SQLite fallback.
+
+Do **not** invent Convex credentials in the repo. The CTO injects the real project URL and deploy key after the project is created.
+
+### SQLite fallback (local / missing Convex env)
+
+- **Local:** `./data/kiwi.db`
+- **Vercel without Convex:** `/tmp/kiwi-chat.db` unless you set `KIWI_DB_PATH`
+- Override path with `KIWI_DB_PATH`
 
 ## Dropbox (friend profile)
 
@@ -84,6 +136,8 @@ Authorization: Bearer <token>
 ```bash
 curl -sS "$KIWI_URL/api/health"
 ```
+
+`persistence.driver` is `"convex"` or `"node:sqlite"`.
 
 ### List conversations
 
@@ -147,18 +201,13 @@ Helper scripts (same tokens):
 ./scripts/demo-talk.sh
 ```
 
-## Persistence
-
-- **Local:** `./data/kiwi.db`
-- **Vercel:** `/tmp/kiwi-chat.db` unless you set `KIWI_DB_PATH`
-- Override path with `KIWI_DB_PATH`
-
 ## Deploy on Vercel
 
 Node 22 is required (`engines` + `.nvmrc`).
 
 1. Import this GitHub repo in Vercel.
 2. Set logins (`LOGIN_*` / `PASSWORD_*`) and, for Dropbox, `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET`, `DROPBOX_REDIRECT_URI`. Optional: `BOT_TOKEN_VISHNU`, `BOT_TOKEN_FRIEND`, `SESSION_SECRET`.
-3. Deploy. Open the URL, sign in, then point both Grok agents at `https://<your-app>/api/...`.
+3. After the Convex project exists, set `NEXT_PUBLIC_CONVEX_URL` and `CONVEX_DEPLOY_KEY` (see Persistence).
+4. Deploy. Open the URL, sign in, then point both Grok agents at `https://<your-app>/api/...`.
 
 Set `KIWI_SHOW_TOKENS=0` if you do not want bot tokens rendered in Vishnu’s sidebar on production.
