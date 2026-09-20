@@ -1,5 +1,3 @@
-import { ConvexHttpClient } from "convex/browser";
-import { anyApi } from "convex/server";
 import { getBot } from "./auth";
 import {
   BOT_LIST,
@@ -12,6 +10,7 @@ import {
   type AuthorKind,
   type PersonId,
 } from "./config";
+import { api, getConvexClient } from "./convex-client";
 import { humanDisplayName } from "./session";
 import type {
   BootstrapPayload,
@@ -23,19 +22,15 @@ import type {
 let printed = false;
 
 function client() {
-  const url = convexDeploymentUrl();
-  if (!url) {
-    throw new Error("Convex is not configured.");
-  }
-  return new ConvexHttpClient(url);
+  return getConvexClient();
 }
 
 export async function getFriendProfile(): Promise<FriendProfilePublic> {
-  return client().query(anyApi.chat.getFriendProfile, {});
+  return client().query(api.chat.getFriendProfile, {});
 }
 
 export async function saveFriendName(name: string) {
-  return client().mutation(anyApi.chat.saveFriendName, { name });
+  return client().mutation(api.chat.saveFriendName, { name });
 }
 
 export async function saveFriendDropbox(input: {
@@ -45,26 +40,26 @@ export async function saveFriendDropbox(input: {
   accessToken: string;
   refreshToken: string;
 }) {
-  return client().mutation(anyApi.chat.saveFriendDropbox, input);
+  return client().mutation(api.chat.saveFriendDropbox, input);
 }
 
 export async function clearFriendDropbox() {
-  return client().mutation(anyApi.chat.clearFriendDropbox, {});
+  return client().mutation(api.chat.clearFriendDropbox, {});
 }
 
 export async function listConversations(): Promise<Conversation[]> {
-  return client().query(anyApi.chat.listConversations, {});
+  return client().query(api.chat.listConversations, {});
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {
-  return client().query(anyApi.chat.getConversation, { conversationId: id });
+  return client().query(api.chat.getConversation, { conversationId: id });
 }
 
 export async function conversationHasMember(
   conversationId: string,
   botId: string,
 ) {
-  return client().query(anyApi.chat.conversationHasMember, {
+  return client().query(api.chat.conversationHasMember, {
     conversationId,
     botId,
   });
@@ -74,14 +69,14 @@ export async function createConversation(input: {
   title?: string;
   memberIds: string[];
 }) {
-  const conversation = await client().mutation(anyApi.chat.createConversation, {
+  const conversation = await client().mutation(api.chat.createConversation, {
     title: input.title,
     memberIds: input.memberIds,
   });
   if (!conversation) {
     throw new Error("Convex did not return the new conversation.");
   }
-  return conversation as Conversation;
+  return conversation;
 }
 
 export async function listMessages(input: {
@@ -89,7 +84,7 @@ export async function listMessages(input: {
   after?: string | number | null;
   limit?: number;
 }): Promise<Message[]> {
-  return client().query(anyApi.chat.listMessages, {
+  return client().query(api.chat.listMessages, {
     conversationId: input.conversationId,
     after: input.after ?? null,
     limit: input.limit,
@@ -97,7 +92,7 @@ export async function listMessages(input: {
 }
 
 export async function lastSeq(conversationId: string) {
-  return client().query(anyApi.chat.lastSeq, { conversationId });
+  return client().query(api.chat.lastSeq, { conversationId });
 }
 
 export async function createMessage(input: {
@@ -106,7 +101,7 @@ export async function createMessage(input: {
   authorKind: AuthorKind;
   body: string;
 }) {
-  return client().mutation(anyApi.chat.createMessage, input);
+  return client().mutation(api.chat.createMessage, input);
 }
 
 export async function getBootstrap(viewerId: PersonId): Promise<BootstrapPayload> {
@@ -149,10 +144,7 @@ export async function getBootstrap(viewerId: PersonId): Promise<BootstrapPayload
 }
 
 export async function ensureSeed() {
-  const result = (await client().mutation(anyApi.seed.ensureSeed, {})) as {
-    seeded: boolean;
-    conversationId: string;
-  };
+  const result = await client().mutation(api.seed.ensureSeed, {});
   if (!printed) {
     printed = true;
     const url = convexDeploymentUrl();
