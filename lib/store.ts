@@ -130,6 +130,32 @@ export async function createMessage(input: {
   return (await adapter()).createMessage(input);
 }
 
+export async function touchBot(botId: PersonId) {
+  try {
+    return await (await adapter()).touchBot(botId);
+  } catch (error) {
+    console.warn("Bot presence update failed.", error);
+    return null;
+  }
+}
+
+export function noteBot(actor: { kind: string; id: string } | null) {
+  if (actor?.kind === "bot" && (actor.id === "vishnu" || actor.id === "friend")) {
+    void touchBot(actor.id);
+  }
+}
+
+export async function listBotPresence() {
+  return (await adapter()).listBotPresence();
+}
+
+export async function clearConversation(input: {
+  conversationId?: string;
+  reseed?: boolean;
+}) {
+  return (await adapter()).clearConversation(input);
+}
+
 export async function getBootstrap(viewerId: PersonId) {
   return (await adapter()).getBootstrap(viewerId);
 }

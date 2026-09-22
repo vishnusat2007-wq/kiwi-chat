@@ -12,7 +12,7 @@ import {
   formatListTime,
   previewBody,
 } from "@/lib/format";
-import type { BootstrapPayload, Conversation, Message } from "@/lib/types";
+import type { BootstrapPayload, BotPresence, Conversation, Message } from "@/lib/types";
 
 function mergeMessages(current: Message[], incoming: Message[]) {
   if (incoming.length === 0) return current;
@@ -21,20 +21,87 @@ function mergeMessages(current: Message[], incoming: Message[]) {
   return Array.from(byId.values()).sort((a, b) => a.seq - b.seq);
 }
 
-function curlExample(
-  bot: "vishnu" | "friend",
-  conversationId: string,
-  token: string | null,
-) {
-  const bearer = token ?? `<${bot}_token>`;
-  const sample =
-    bot === "vishnu"
-      ? "Ping from Vishnu’s Grok."
-      : "Pong from the friend Grok.";
-  return `curl -sS -X POST "$KIWI_URL/api/messages" \\
-  -H "Authorization: Bearer ${bearer}" \\
-  -H "Content-Type: application/json" \\
-  -d '{"conversationId":"${conversationId}","body":"${sample}"}'`;
+function speakerLabel(message: Message) {
+  return message.authorKind === "bot" ? message.author.fullName : message.author.name;
+}
+
+function BotConnection({
+  name,
+  connected,
+}: {
+  name: string;
+  connected: boolean;
+}) {
+  return (
+    <span className={`bot-status ${connected ? "is-on" : "is-off"}`}>
+      <span
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+          connected ? "bg-current live-dot" : "bg-current opacity-45"
+        }`}
+        aria-hidden="true"
+      />
+      <span className="truncate">{name}</span>
+      <span className="shrink-0 tracking-[0.12em] uppercase">
+        {connected ? "Connected" : "Not connected"}
+      </span>
+    </span>
+  );
+}
+
+function ResetThread({
+  confirming,
+  pending,
+  error,
+  onAsk,
+  onCancel,
+  onConfirm,
+}: {
+  confirming: boolean;
+  pending: boolean;
+  error: string | null;
+  onAsk: () => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (confirming) {
+    return (
+      <div className="flex max-w-xs flex-col items-start gap-2">
+        <p className="text-[12px] leading-5 text-mist">
+          Wipe Kiwi Lab and restore the starter lines. Quiet room is removed
+          too.
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending}
+            className="rounded-full bg-kiwi px-3 py-1.5 text-[12px] font-extrabold text-[#11180f] disabled:opacity-60"
+          >
+            {pending ? "Resetting…" : "Reset"}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="rounded-full border border-line px-3 py-1.5 text-[12px] font-bold text-mist hover:text-paper"
+          >
+            Cancel
+          </button>
+        </div>
+        {error ? <p className="text-[12px] text-[#ff8b8b]">{error}</p> : null}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onAsk}
+      className="rounded-full border border-line px-3 py-1.5 text-[12px] font-bold text-mist hover:text-paper"
+    >
+      Reset Kiwi Lab
+    </button>
+  );
 }
 
 function useLoginRedirect() {
@@ -67,8 +134,10 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
   );
   const [live, setLive] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
-  const [curlBot, setCurlBot] = useState<"vishnu" | "friend">("vishnu");
-  const [showCurl, setShowCurl] = useState(false);
+  const [presence, setPresence] = useState<BotPresence[]>(bootstrap.botPresence);
+  const [streamKey, setStreamKey] = useState(0);
+  const [resetMode, setResetMode] = useState<"idle" | "confirm" | "working">("idle");
+  const [resetError, setResetError] = useState<string | null>(null);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
   const scrollerRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -99,6 +168,10 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
     });
   }, [conversations, query]);
 
+  const connectedById = useMemo(() => {
+    return new Map(presence.map((item) => [item.id, item.connected]));
+  }, [presence]);
+
   const grouped = useMemo(() => {
     const days: Array<{ key: string; label: string; items: Message[] }> = [];
     for (const message of messages) {
@@ -125,6 +198,27 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
     if (goToLoginIfNeeded(response.status) || !response.ok) return;
     const data = (await response.json()) as { conversations: Conversation[] };
     setConversations(data.conversations);
+  }, [goToLoginIfNeeded]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pullPresence() {
+      const response = await fetch("/api/bots/status", {
+        cache: "no-store",
+        credentials: "include",
+      });
+      if (goToLoginIfNeeded(response.status) || !response.ok || cancelled) return;
+      const data = (await response.json()) as { bots: BotPresence[] };
+      setPresence(data.bots);
+    }
+    void pullPresence();
+    const timer = window.setInterval(() => {
+      void pullPresence();
+    }, 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [goToLoginIfNeeded]);
 
   useEffect(() => {
@@ -180,7 +274,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
       window.clearInterval(poll);
       window.clearInterval(listPoll);
     };
-  }, [activeId, goToLoginIfNeeded, refreshConversations]);
+  }, [activeId, goToLoginIfNeeded, refreshConversations, streamKey]);
 
   useEffect(() => {
     if (!stickToBottom.current) return;
@@ -263,8 +357,48 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
     router.refresh();
   }
 
-  const tokenFor = (bot: "vishnu" | "friend") =>
-    bootstrap.tokens ? bootstrap.tokens[bot] : null;
+  async function resetKiwiLab() {
+    setResetMode("working");
+    setResetError(null);
+    try {
+      const response = await fetch("/api/conversations/clear", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: bootstrap.seedConversationId,
+          reseed: true,
+        }),
+      });
+      if (goToLoginIfNeeded(response.status)) {
+        setResetMode("idle");
+        return;
+      }
+      const data = (await response.json()) as {
+        message?: string;
+        messages?: Message[];
+        conversations?: Conversation[];
+      };
+      if (!response.ok || !data.messages || !data.conversations) {
+        setResetError(
+          typeof data.message === "string" ? data.message : "Could not reset Kiwi Lab.",
+        );
+        setResetMode("confirm");
+        return;
+      }
+      messagesRef.current = data.messages;
+      setMessages(data.messages);
+      setConversations(data.conversations);
+      setActiveId(bootstrap.seedConversationId);
+      setMobilePane("thread");
+      stickToBottom.current = true;
+      setStreamKey((value) => value + 1);
+      setResetMode("idle");
+    } catch {
+      setResetError("Could not reset Kiwi Lab.");
+      setResetMode("confirm");
+    }
+  }
 
   function onComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -359,7 +493,11 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                             </span>
                             <span className="mt-0.5 block truncate text-[13px] text-mist">
                               {conversation.lastMessage
-                                ? `${conversation.lastMessage.author.name}: ${previewBody(
+                                ? `${
+                                    conversation.lastMessage.authorKind === "bot"
+                                      ? "Grok · "
+                                      : ""
+                                  }${speakerLabel(conversation.lastMessage)}: ${previewBody(
                                     conversation.lastMessage.body,
                                   )}`
                                 : "No messages yet · say hi"}
@@ -373,19 +511,58 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
               )}
             </div>
 
-            <div className="shrink-0 border-t border-line px-4 py-4 pb-6">
+            <div className="kiwi-scroll max-h-[48%] shrink-0 overflow-y-auto border-t border-line px-4 py-4 pb-6">
               <p className="kiwi-kicker mb-3">People & groks</p>
               <div className="space-y-2">
-                {bootstrap.bots.map((bot) => (
-                  <div key={bot.id} className="flex items-center gap-3">
-                    <BotAvatar bot={bot} size="sm" showLive />
-                    <div className="min-w-0">
-                      <p className="text-[15px] font-bold text-paper">{bot.fullName}</p>
-                      <p className="truncate text-[12px] text-mist">Bot · {bot.name}</p>
+                {bootstrap.bots.map((bot) => {
+                  const connected = connectedById.get(bot.id) === true;
+                  return (
+                    <div key={bot.id} className="flex items-center gap-3">
+                      <BotAvatar
+                        bot={bot}
+                        size="sm"
+                        presence={connected ? "on" : "off"}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[15px] font-bold text-paper">{bot.fullName}</p>
+                        <p
+                          className={`truncate text-[12px] font-bold ${
+                            connected ? "text-kiwi" : "text-mist"
+                          }`}
+                        >
+                          {connected ? "Connected" : "Not connected"}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+
+              <Link
+                href="/friend-bot"
+                className="mt-4 block text-[13px] font-extrabold text-kiwi hover:text-paper"
+              >
+                Connect friend’s Grok →
+              </Link>
+
+              {viewerId === "vishnu" ? (
+                <div className="mt-4">
+                  <ResetThread
+                    confirming={resetMode !== "idle"}
+                    pending={resetMode === "working"}
+                    error={resetError}
+                    onAsk={() => {
+                      setResetError(null);
+                      setResetMode("confirm");
+                    }}
+                    onCancel={() => {
+                      setResetError(null);
+                      setResetMode("idle");
+                    }}
+                    onConfirm={() => void resetKiwiLab()}
+                  />
+                </div>
+              ) : null}
 
               <Link
                 href="/profile"
@@ -459,9 +636,34 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                       <h1 className="truncate font-display text-[34px] leading-none text-paper md:text-[40px]">
                         {active.title}
                       </h1>
-                      <p className="mt-1.5 truncate text-[13px] font-bold text-mist">
-                        You, {bootstrap.viewer.id === "vishnu" ? "your friend" : "Vishnu"}, and both groks
-                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {bootstrap.bots.map((bot) => (
+                          <BotConnection
+                            key={bot.id}
+                            name={bot.fullName}
+                            connected={connectedById.get(bot.id) === true}
+                          />
+                        ))}
+                      </div>
+                      {viewerId === "vishnu" &&
+                      active.id === bootstrap.seedConversationId ? (
+                        <div className="mt-2 md:hidden">
+                          <ResetThread
+                            confirming={resetMode !== "idle"}
+                            pending={resetMode === "working"}
+                            error={resetError}
+                            onAsk={() => {
+                              setResetError(null);
+                              setResetMode("confirm");
+                            }}
+                            onCancel={() => {
+                              setResetError(null);
+                              setResetMode("idle");
+                            }}
+                            onConfirm={() => void resetKiwiLab()}
+                          />
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   <div
@@ -528,10 +730,23 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                             const isRight =
                               message.authorKind === "human" &&
                               message.authorId === viewerId;
-                            const label =
+                            const label = speakerLabel(message);
+                            const bubble =
+                              isRight
+                                ? "bubble-right bubble-mine"
+                                : message.authorKind === "bot"
+                                  ? `bubble-left bubble-bot ${
+                                      message.authorId === "friend"
+                                        ? "bubble-friend"
+                                        : "bubble-vishnu"
+                                    }`
+                                  : "bubble-left bubble-human";
+                            const kindLabel =
                               message.authorKind === "bot"
-                                ? message.author.fullName
-                                : message.author.name;
+                                ? "Grok"
+                                : isRight
+                                  ? "You"
+                                  : "Human";
                             return (
                               <li
                                 key={message.id}
@@ -552,12 +767,21 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                                   <div className={isRight ? "text-right" : ""}>
                                     {groupedWithPrevious ? null : (
                                       <div
-                                        className={`mb-1 flex items-baseline gap-2 ${
+                                        className={`mb-1 flex flex-wrap items-baseline gap-2 ${
                                           isRight ? "justify-end" : ""
                                         }`}
                                       >
                                         <span className="text-[13px] font-bold text-paper">
                                           {label}
+                                        </span>
+                                        <span
+                                          className={
+                                            message.authorKind === "bot"
+                                              ? "kind-pill kind-pill-grok"
+                                              : "kind-pill kind-pill-human"
+                                          }
+                                        >
+                                          {kindLabel}
                                         </span>
                                         <span className="text-[11px] text-mist">
                                           {formatClock(message.createdAt)}
@@ -565,15 +789,7 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                                       </div>
                                     )}
                                     <div
-                                      className={`max-w-full rounded-[26px] px-4 py-3.5 text-[16.5px] leading-6 ${
-                                        isRight ? "bubble-right bubble-mine" : "bubble-left"
-                                      } ${
-                                        !isRight && message.authorId === "friend"
-                                          ? "bubble-friend"
-                                          : !isRight
-                                            ? "bubble-vishnu"
-                                            : ""
-                                      } ${
+                                      className={`max-w-full rounded-[26px] px-4 py-3.5 text-[16.5px] leading-6 ${bubble} ${
                                         flashIds.has(message.id)
                                           ? "ring-1 ring-kiwi/60"
                                           : ""
@@ -612,19 +828,15 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                     />
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <p className="min-w-0 truncate text-[13px] font-medium text-mist">
-                        {sendError ??
-                          "Enter to send · groks reply when their agents are on"}
+                        {sendError ?? "Enter to send · Shift+Enter for a new line"}
                       </p>
                       <div className="flex shrink-0 items-center gap-2">
-                        {viewerId === "vishnu" ? (
-                          <button
-                            type="button"
-                            onClick={() => setShowCurl((value) => !value)}
-                            className="rounded-full border border-line px-3 py-2 text-[12px] font-bold text-mist hover:text-paper"
-                          >
-                            {showCurl ? "Hide curl" : "curl"}
-                          </button>
-                        ) : null}
+                        <Link
+                          href="/friend-bot"
+                          className="rounded-full border border-line px-3 py-2 text-[12px] font-bold text-mist hover:text-paper"
+                        >
+                          Grok setup
+                        </Link>
                         <button
                           type="submit"
                           disabled={sending || !draft.trim()}
@@ -634,41 +846,6 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                         </button>
                       </div>
                     </div>
-                    {showCurl && activeId && viewerId === "vishnu" ? (
-                      <div className="mt-3">
-                        <div className="mb-2 flex gap-2">
-                          {(["vishnu", "friend"] as const).map((bot) => (
-                            <button
-                              key={bot}
-                              type="button"
-                              onClick={() => setCurlBot(bot)}
-                              className={`rounded-full px-3 py-1 text-[12px] ${
-                                curlBot === bot
-                                  ? "bg-bg-3 text-paper"
-                                  : "text-mist hover:text-paper"
-                              }`}
-                            >
-                              {bot}
-                            </button>
-                          ))}
-                        </div>
-                        <pre className="overflow-x-auto rounded-2xl bg-[#070b08] p-3 font-mono text-[11px] leading-5 text-kiwi">
-                          {curlExample(curlBot, activeId, tokenFor(curlBot))}
-                        </pre>
-                        <button
-                          type="button"
-                          className="mt-2 text-[12px] text-mist hover:text-paper"
-                          onClick={() =>
-                            void copy(
-                              "curl",
-                              curlExample(curlBot, activeId, tokenFor(curlBot)),
-                            )
-                          }
-                        >
-                          {copied === "curl" ? "Copied to clipboard" : "Copy command"}
-                        </button>
-                      </div>
-                    ) : null}
                   </form>
                 </footer>
               </>

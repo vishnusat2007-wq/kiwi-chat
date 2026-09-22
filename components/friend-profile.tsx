@@ -201,6 +201,12 @@ export function FriendProfile({
                   Open chat →
                 </Link>
               ) : null}
+              <Link
+                href="/friend-bot"
+                className="text-[16px] font-bold text-kiwi hover:text-paper"
+              >
+                Connect your Grok →
+              </Link>
             </div>
           </form>
         ) : (
@@ -224,12 +230,20 @@ export function FriendProfile({
                   : "Not connected yet"}
               </p>
             </div>
-            <Link
-              href="/chat"
-              className="kiwi-btn inline-flex rounded-full px-6 py-3.5 text-[16px]"
-            >
-              Back to chat
-            </Link>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link
+                href="/chat"
+                className="kiwi-btn inline-flex rounded-full px-6 py-3.5 text-[16px]"
+              >
+                Back to chat
+              </Link>
+              <Link
+                href="/friend-bot"
+                className="text-[16px] font-bold text-kiwi hover:text-paper"
+              >
+                Connect friend’s Grok →
+              </Link>
+            </div>
           </div>
         )}
       </div>

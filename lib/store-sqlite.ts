@@ -1,20 +1,25 @@
 import { getBot } from "./auth";
 import {
   BOT_LIST,
+  BOT_PRESENCE_WINDOW_MS,
   HUMANS,
   SEED_CONVERSATION_ID,
+  botIsConnected,
   isDropboxConfigured,
   publicBot,
   shouldShowTokensInUi,
   type AuthorKind,
   type PersonId,
 } from "./config";
-import { getDb } from "./db";
+import { getDb, removeQuietRoom } from "./db";
 import { createId, nowIso } from "./ids";
+import { QUIET_ROOM_ID, SEED_MESSAGES, SEED_TITLE } from "./seed";
 import { humanDisplayName } from "./session";
 import { asAuthorKind, speakerFor } from "./speakers";
 import type {
   BootstrapPayload,
+  BotPresenceSnapshot,
+  ClearConversationResult,
   Conversation,
   FriendProfilePublic,
   Message,
@@ -331,6 +336,129 @@ export async function createMessage(input: {
   return mapMessage(row, friendName);
 }
 
+export async function touchBot(botId: PersonId) {
+  const db = getDb();
+  const lastSeenAt = nowIso();
+  db.prepare("UPDATE bots SET last_seen_at = ? WHERE id = ?").run(
+    lastSeenAt,
+    botId,
+  );
+  return { botId, lastSeenAt, stored: true };
+}
+
+export async function listBotPresence(): Promise<BotPresenceSnapshot> {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT id, last_seen_at FROM bots")
+    .all() as Array<{ id: string; last_seen_at: string | null }>;
+  const byId = new Map(rows.map((row) => [row.id, row.last_seen_at]));
+  const now = Date.now();
+  return {
+    windowMs: BOT_PRESENCE_WINDOW_MS,
+    bots: (["vishnu", "friend"] as const).map((id) => {
+      const lastSeenAt = byId.get(id) ?? null;
+      return { id, lastSeenAt, connected: botIsConnected(lastSeenAt, now) };
+    }),
+  };
+}
+
+function ensureSqliteLab(db: ReturnType<typeof getDb>) {
+  const existing = db
+    .prepare("SELECT id FROM conversations WHERE id = ?")
+    .get(SEED_CONVERSATION_ID) as { id: string } | undefined;
+  if (!existing) {
+    const createdAt = nowIso();
+    db.prepare(
+      "INSERT INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
+    ).run(SEED_CONVERSATION_ID, SEED_TITLE, createdAt, createdAt);
+  }
+  const insertMember = db.prepare(
+    "INSERT OR IGNORE INTO conversation_members (conversation_id, bot_id) VALUES (?, ?)",
+  );
+  insertMember.run(SEED_CONVERSATION_ID, "vishnu");
+  insertMember.run(SEED_CONVERSATION_ID, "friend");
+}
+
+function insertSqliteStarter(db: ReturnType<typeof getDb>) {
+  const insertMessage = db.prepare(
+    "INSERT INTO messages (id, conversation_id, bot_id, author_kind, body, created_at) VALUES (?, ?, ?, 'bot', ?, ?)",
+  );
+  let cursor = Date.now();
+  for (const message of SEED_MESSAGES) {
+    cursor += 18_000;
+    insertMessage.run(
+      message.id,
+      SEED_CONVERSATION_ID,
+      message.botId,
+      message.body,
+      new Date(cursor).toISOString(),
+    );
+  }
+  db.prepare("UPDATE conversations SET updated_at = ? WHERE id = ?").run(
+    new Date(cursor).toISOString(),
+    SEED_CONVERSATION_ID,
+  );
+}
+
+export async function clearConversation(input: {
+  conversationId?: string;
+  reseed?: boolean;
+}): Promise<ClearConversationResult> {
+  const db = getDb();
+  const quiet = removeQuietRoom(db);
+  const conversationId = input.conversationId?.trim() || SEED_CONVERSATION_ID;
+
+  if (conversationId === QUIET_ROOM_ID) {
+    return {
+      conversationId,
+      deletedMessages: quiet.deletedMessages,
+      reseeded: false,
+      quietRoomRemoved: true,
+      missing: false,
+      removed: true,
+    };
+  }
+
+  const reseed = input.reseed !== false && conversationId === SEED_CONVERSATION_ID;
+  const existing = db
+    .prepare("SELECT id FROM conversations WHERE id = ?")
+    .get(conversationId) as { id: string } | undefined;
+
+  if (!existing && conversationId === SEED_CONVERSATION_ID) {
+    ensureSqliteLab(db);
+  } else if (!existing) {
+    return {
+      conversationId,
+      deletedMessages: 0,
+      reseeded: false,
+      quietRoomRemoved: quiet.removed,
+      missing: true,
+      removed: false,
+    };
+  }
+
+  const deleted = db
+    .prepare("DELETE FROM messages WHERE conversation_id = ?")
+    .run(conversationId) as { changes?: number };
+  if (reseed) {
+    insertSqliteStarter(db);
+  } else {
+    db.prepare("UPDATE conversations SET updated_at = ? WHERE id = ?").run(
+      nowIso(),
+      conversationId,
+    );
+  }
+
+  return {
+    conversationId,
+    deletedMessages: deleted.changes ?? 0,
+    reseeded: reseed,
+    quietRoomRemoved: quiet.removed,
+    missing: false,
+    removed: false,
+  };
+}
+
 export async function getBootstrap(viewerId: PersonId): Promise<BootstrapPayload> {
   const conversations = await listConversations();
   const preferred =
@@ -342,17 +470,22 @@ export async function getBootstrap(viewerId: PersonId): Promise<BootstrapPayload
     conversations[0] ??
     null;
   const activeConversationId = preferred?.id ?? null;
-  const messages = activeConversationId
-    ? await listMessages({ conversationId: activeConversationId })
-    : [];
-  const friendProfile = await getFriendProfile();
+  const [messages, friendProfile, presence] = await Promise.all([
+    activeConversationId
+      ? listMessages({ conversationId: activeConversationId })
+      : Promise.resolve([]),
+    getFriendProfile(),
+    listBotPresence(),
+  ]);
   const showTokens = shouldShowTokensInUi() && viewerId === "vishnu";
 
   return {
     conversations,
     messages,
     activeConversationId,
+    seedConversationId: SEED_CONVERSATION_ID,
     bots: BOT_LIST.map(publicBot),
+    botPresence: presence.bots,
     viewer: {
       id: viewerId,
       name: humanDisplayName(viewerId, friendProfile.name),
@@ -371,5 +504,6 @@ export async function getBootstrap(viewerId: PersonId): Promise<BootstrapPayload
 }
 
 export async function ensureSeed() {
-  getDb();
+  const db = getDb();
+  removeQuietRoom(db);
 }

@@ -102,11 +102,8 @@ function migrate(db: DatabaseSync) {
 
   ensureColumn(db, "messages", "author_kind", "TEXT NOT NULL DEFAULT 'bot'");
 
-  db.exec(`
-    DELETE FROM messages WHERE conversation_id = '${QUIET_ROOM_ID}';
-    DELETE FROM conversation_members WHERE conversation_id = '${QUIET_ROOM_ID}';
-    DELETE FROM conversations WHERE id = '${QUIET_ROOM_ID}';
-  `);
+  ensureColumn(db, "bots", "last_seen_at", "TEXT");
+  removeQuietRoom(db);
 
   const createdAt = nowIso();
   db.prepare(
@@ -196,6 +193,24 @@ export function printTokenBanner(freshSeed: boolean) {
     "",
   ];
   console.log(lines.join("\n"));
+}
+
+export function removeQuietRoom(db: DatabaseSync) {
+  const existing = db
+    .prepare("SELECT id FROM conversations WHERE id = ?")
+    .get(QUIET_ROOM_ID) as { id: string } | undefined;
+  const counted = db
+    .prepare("SELECT COUNT(*) AS count FROM messages WHERE conversation_id = ?")
+    .get(QUIET_ROOM_ID) as { count: number };
+  db.prepare("DELETE FROM messages WHERE conversation_id = ?").run(QUIET_ROOM_ID);
+  db.prepare("DELETE FROM conversation_members WHERE conversation_id = ?").run(
+    QUIET_ROOM_ID,
+  );
+  db.prepare("DELETE FROM conversations WHERE id = ?").run(QUIET_ROOM_ID);
+  return {
+    removed: Boolean(existing),
+    deletedMessages: counted.count,
+  };
 }
 
 export function getDb() {

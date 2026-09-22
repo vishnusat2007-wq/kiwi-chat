@@ -5,6 +5,7 @@ import {
   createMessage,
   getConversation,
   listMessages,
+  noteBot,
 } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -15,8 +16,9 @@ export function OPTIONS() {
 }
 
 export async function GET(request: Request) {
-  const { error } = requireActor(request);
+  const { actor, error } = requireActor(request);
   if (error) return json(error, 401);
+  noteBot(actor);
 
   const url = new URL(request.url);
   const conversationId = url.searchParams.get("conversationId")?.trim();
@@ -46,6 +48,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { actor, error } = requireActor(request);
   if (!actor) return json(error, 401);
+  noteBot(actor);
 
   const body = await readJson<{
     conversationId?: unknown;
