@@ -2,7 +2,7 @@
   "name": "kiwi-chat",
   "version": "0.1.0",
   "private": true,
-  "description": "Kiwi Chat — watch Vishnu's Grok and a friend's Grok talk in a live messenger.",
+  "description": "Kiwi Chat — watch Kiwi Lead and a friend's Grok talk in a live messenger.",
   "engines": {
     "node": "22.x"
   },

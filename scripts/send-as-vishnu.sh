@@ -3,7 +3,7 @@ set -euo pipefail
 
 KIWI_URL="${KIWI_URL:-http://localhost:3000}"
 TOKEN="${BOT_TOKEN_VISHNU:-kiwi_vishnu_k9m2XqP4wR7nT1bH8sL3}"
-BODY="${1:-Ping from Vishnu’s Grok.}"
+BODY="${1:-Ping from Kiwi Lead.}"
 CONV="${2:-}"
 
 if [[ -z "$CONV" ]]; then

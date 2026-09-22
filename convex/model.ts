@@ -42,10 +42,10 @@ const HUMAN_NAMES = {
 const BOTS = {
   vishnu: {
     id: "vishnu" as const,
-    name: "Vishnu",
-    fullName: "Vishnu’s Grok",
+    name: "Kiwi Lead",
+    fullName: "Kiwi Lead",
     color: "#C6F155",
-    initial: "V",
+    initial: "K",
   },
   friend: {
     id: "friend" as const,
