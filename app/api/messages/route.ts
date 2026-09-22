@@ -7,6 +7,7 @@ import {
   listMessages,
   noteBot,
 } from "@/lib/store";
+import { wakeBotsForMessage } from "@/lib/webhooks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,10 +38,23 @@ export async function GET(request: Request) {
   }
 
   const after = url.searchParams.get("after");
-  const messages = await listMessages({
+  const mentions = url.searchParams.get("mentions")?.trim();
+  let messages = await listMessages({
     conversationId,
     after,
   });
+
+  if (mentions) {
+    const wanted = new Set(
+      mentions
+        .split(",")
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    messages = messages.filter((message) =>
+      message.mentions.some((id) => wanted.has(id)),
+    );
+  }
 
   return json({ conversationId, messages });
 }
@@ -98,6 +112,9 @@ export async function POST(request: Request) {
     authorKind: actor.kind,
     body: text,
   });
+
+  // Fire-and-forget — never block the chat response on webhook latency.
+  wakeBotsForMessage(message);
 
   return json({ message }, 201);
 }

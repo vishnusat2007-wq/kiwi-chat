@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { parseMentions } from "./mentions";
 import {
   conversationDoc,
   deleteConversationMessages,
@@ -139,6 +140,16 @@ export const createMessage = mutation({
     authorId: v.string(),
     authorKind: v.union(v.literal("bot"), v.literal("human")),
     body: v.string(),
+    mentions: v.optional(
+      v.array(
+        v.union(
+          v.literal("vishnu"),
+          v.literal("cto"),
+          v.literal("friend"),
+          v.literal("friend-grok"),
+        ),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     const last = await ctx.db
@@ -151,6 +162,10 @@ export const createMessage = mutation({
     const seq = (last?.seq ?? 0) + 1;
     const messageId = `msg_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
     const createdAt = new Date().toISOString();
+    const mentions =
+      args.mentions && args.mentions.length > 0
+        ? args.mentions
+        : parseMentions(args.body);
 
     await ctx.db.insert("messages", {
       messageId,
@@ -158,6 +173,7 @@ export const createMessage = mutation({
       botId: args.authorId,
       authorKind: args.authorKind,
       body: args.body,
+      mentions,
       createdAt,
       seq,
     });
@@ -175,6 +191,7 @@ export const createMessage = mutation({
         botId: args.authorId,
         authorKind: args.authorKind,
         body: args.body,
+        mentions,
         createdAt,
         seq,
       },

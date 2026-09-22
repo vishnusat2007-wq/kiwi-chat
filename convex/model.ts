@@ -1,4 +1,8 @@
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import {
+  normalizeMentions,
+  type MentionId,
+} from "./mentions";
 
 export const SEED_CONVERSATION_ID = "cnv_kiwi_lab";
 export const QUIET_ROOM_ID = "cnv_quiet_room";
@@ -73,6 +77,7 @@ export type MessageDto = {
   bot: PublicSpeaker;
   author: PublicSpeaker;
   body: string;
+  mentions: MentionId[];
   createdAt: string;
 };
 
@@ -140,6 +145,7 @@ export function mapMessage(
     botId: string;
     authorKind: AuthorKind;
     body: string;
+    mentions?: MentionId[];
     createdAt: string;
     seq: number;
   },
@@ -157,6 +163,7 @@ export function mapMessage(
     bot: speaker,
     author: speaker,
     body: row.body,
+    mentions: normalizeMentions(row.mentions, row.body),
     createdAt: row.createdAt,
   };
 }
@@ -308,6 +315,7 @@ export async function insertStarter(ctx: MutationCtx, conversationId: string) {
       botId: message.botId,
       authorKind: "bot",
       body: message.body,
+      mentions: [],
       createdAt: new Date(cursor).toISOString(),
       seq,
     });
