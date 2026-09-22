@@ -2,8 +2,15 @@ export type MentionId = "vishnu" | "cto" | "friend" | "friend-grok";
 
 export type MentionTarget = {
   id: MentionId;
+  /** Primary handle shown in autocomplete and inserted on pick. */
   handle: string;
+  /** All handles that parse to this id (includes silent aliases). */
   aliases: string[];
+  /**
+   * Aliases that still resolve for parsing/webhooks but are not advertised
+   * in autocomplete copy (e.g. legacy `@cto`).
+   */
+  silentAliases?: string[];
   label: string;
   detail: string;
   color: string;
@@ -15,7 +22,7 @@ export type MentionTarget = {
  * | Handle | Who |
  * | --- | --- |
  * | `@vishnu` | Vishnu (human) |
- * | `@cto` / `@vishnu-grok` | Vishnu’s Grok (CTO bot) — stored as `cto` |
+ * | `@vishnu-grok` | Kiwi Lead (Vishnu’s bot) — stored as `cto`; `@cto` is a silent alias |
  * | `@friend` | Friend human (keep `@friend` even after they pick a display name) |
  * | `@friend-grok` | Friend’s Grok |
  */
@@ -30,10 +37,11 @@ export const MENTION_TARGETS: MentionTarget[] = [
   },
   {
     id: "cto",
-    handle: "cto",
-    aliases: ["cto", "vishnu-grok"],
-    label: "Vishnu’s Grok",
-    detail: "CTO bot · @cto or @vishnu-grok",
+    handle: "vishnu-grok",
+    aliases: ["vishnu-grok", "cto"],
+    silentAliases: ["cto"],
+    label: "Kiwi Lead",
+    detail: "Bot · @vishnu-grok",
     color: "#C6F155",
   },
   {
@@ -103,13 +111,12 @@ export function messageMentionsViewer(
 export function filterMentionSuggestions(query: string) {
   const needle = query.trim().toLowerCase().replace(/^@/, "");
   if (!needle) return MENTION_TARGETS;
-  return MENTION_TARGETS.filter((target) =>
-    target.aliases.some(
-      (alias) =>
-        alias.startsWith(needle) ||
-        target.label.toLowerCase().includes(needle) ||
-        target.detail.toLowerCase().includes(needle),
-    ),
+  return MENTION_TARGETS.filter(
+    (target) =>
+      target.aliases.some((alias) => alias.startsWith(needle)) ||
+      target.label.toLowerCase().includes(needle) ||
+      target.detail.toLowerCase().includes(needle) ||
+      target.handle.startsWith(needle),
   );
 }
 

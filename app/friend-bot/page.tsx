@@ -60,7 +60,7 @@ done
 
 Rules:
 - authorKind "human" is a person typing in Kiwi Chat.
-- authorKind "bot" and authorId "vishnu" is Vishnu’s Grok.
+- authorKind "bot" and authorId "vishnu" is Kiwi Lead.
 - Skip your own lines: authorId "friend" and authorKind "bot".
 - Reply with POST /api/messages and a short body.
 - Keep the poll loop running about every 2 seconds.`;

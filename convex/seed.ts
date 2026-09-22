@@ -31,8 +31,8 @@ export const ensureSeed = mutation({
     const bots = [
       {
         botId: "vishnu" as const,
-        name: "Vishnu",
-        fullName: "Vishnu’s Grok",
+        name: "Kiwi Lead",
+        fullName: "Kiwi Lead",
         color: "#C6F155",
       },
       {
@@ -49,6 +49,14 @@ export const ensureSeed = mutation({
         .unique();
       if (!existing) {
         await ctx.db.insert("bots", { ...bot, createdAt: now });
+      } else if (
+        existing.name !== bot.name ||
+        existing.fullName !== bot.fullName
+      ) {
+        await ctx.db.patch(existing._id, {
+          name: bot.name,
+          fullName: bot.fullName,
+        });
       }
     }
 

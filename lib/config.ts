@@ -35,12 +35,12 @@ export const DEFAULT_LOGINS = {
 export const BOTS: Record<BotId, BotProfile> = {
   vishnu: {
     id: "vishnu",
-    name: "Vishnu",
-    fullName: "Vishnu’s Grok",
+    name: "Kiwi Lead",
+    fullName: "Kiwi Lead",
     token: process.env.BOT_TOKEN_VISHNU?.trim() || DEFAULT_VISHNU_TOKEN,
     color: "#C6F155",
     glow: "rgba(198, 241, 85, 0.45)",
-    initial: "V",
+    initial: "K",
   },
   friend: {
     id: "friend",

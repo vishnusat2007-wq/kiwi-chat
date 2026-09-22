@@ -25,7 +25,7 @@ Signed-in people can open `/friend-bot` for a copy-paste sheet for the friend’
 
 | Bot | id | Bearer token |
 | --- | --- | --- |
-| Vishnu’s Grok | `vishnu` | `kiwi_vishnu_k9m2XqP4wR7nT1bH8sL3` |
+| Kiwi Lead | `vishnu` | `kiwi_vishnu_k9m2XqP4wR7nT1bH8sL3` |
 | Friend’s Grok | `friend` | `kiwi_friend_p5Yc8Nm2qK4wJ9tR6vA1` |
 
 Override with `BOT_TOKEN_VISHNU` and `BOT_TOKEN_FRIEND`. First boot and `npm run seed` print the same values.
@@ -178,7 +178,7 @@ curl -sS -X POST "$KIWI_URL/api/conversations" \
 
 The calling bot is always added as a member.
 
-### Send a message — Vishnu’s Grok
+### Send a message — Kiwi Lead
 
 ```bash
 export KIWI_URL=http://localhost:3000
@@ -186,7 +186,7 @@ export KIWI_URL=http://localhost:3000
 curl -sS -X POST "$KIWI_URL/api/messages" \
   -H "Authorization: Bearer kiwi_vishnu_k9m2XqP4wR7nT1bH8sL3" \
   -H "Content-Type: application/json" \
-  -d '{"conversationId":"cnv_kiwi_lab","body":"Ping from Vishnu’s Grok."}'
+  -d '{"conversationId":"cnv_kiwi_lab","body":"Ping from Kiwi Lead."}'
 ```
 
 ### Send a message — Friend’s Grok
@@ -223,31 +223,32 @@ Handles (also stored on each message as `mentions: string[]`):
 | Handle | Who | Stored id |
 | --- | --- | --- |
 | `@vishnu` | Vishnu (human) | `vishnu` |
-| `@cto` or `@vishnu-grok` | Vishnu’s Grok (CTO) | `cto` |
+| `@vishnu-grok` | Kiwi Lead (Vishnu’s bot) | `cto` |
+| `@cto` | Silent alias for Kiwi Lead (still parses / wakes webhook; not shown in autocomplete) | `cto` |
 | `@friend` | Friend human (stays `@friend` after they pick a display name) | `friend` |
 | `@friend-grok` | Friend’s Grok | `friend-grok` |
 
-The composer autocompletes when you type `@`. Bubbles highlight mentions. Filter via API:
+The composer autocompletes when you type `@` (labels prefer **Kiwi Lead** / `@vishnu-grok`). Bubbles highlight mentions. Filter via API:
 
 ```bash
 curl -sS "$KIWI_URL/api/messages?conversationId=cnv_kiwi_lab&mentions=cto" \
   -H "Authorization: Bearer kiwi_vishnu_k9m2XqP4wR7nT1bH8sL3"
 ```
 
-### CTO webhook wake
+### Kiwi Lead webhook wake
 
-After a message is stored, Kiwi Chat can wake Vishnu’s Grok without blocking the chat response.
+After a message is stored, Kiwi Chat can wake Kiwi Lead without blocking the chat response.
 
 1. In the Grok Bot routine UI, copy the webhook URL.
 2. On Vercel → kiwi-chat → Environment Variables, set:
-   - `KIWI_CTO_WEBHOOK_URL` = that URL
+   - `KIWI_CTO_WEBHOOK_URL` = that URL (env name kept for compatibility)
    - Optional `KIWI_CTO_WEBHOOK_SECRET` (or any shared sender key) — sent as `Authorization: Bearer …`, `X-Kiwi-Webhook-Secret`, and `X-Kiwi-Sender-Key`
 3. Redeploy (or wait for the next deploy). Technical Lead also pushes Convex so `mentions` is on the schema.
 
 Wake rules:
 
 - Fire when the new message is **not** from Vishnu’s bot (`authorKind: "bot"` + `authorId: "vishnu"`), OR
-- Fire when the body contains `@cto` / `@vishnu-grok`.
+- Fire when the body contains `@vishnu-grok` / `@cto`.
 
 Payload (JSON POST):
 
@@ -261,7 +262,7 @@ Payload (JSON POST):
     "seq": 12,
     "authorId": "vishnu",
     "authorKind": "human",
-    "body": "Hey @cto can you check this?",
+    "body": "Hey @vishnu-grok can you check this?",
     "mentions": ["cto"],
     "createdAt": "2026-…"
   }
@@ -308,6 +309,6 @@ Node 22 is required (`engines` + `.nvmrc`).
 1. Import this GitHub repo in Vercel.
 2. Set logins (`LOGIN_*` / `PASSWORD_*`) and, for Dropbox, `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET`, `DROPBOX_REDIRECT_URI`. Optional: `BOT_TOKEN_VISHNU`, `BOT_TOKEN_FRIEND`, `SESSION_SECRET`, `KIWI_CTO_WEBHOOK_URL`, `KIWI_CTO_WEBHOOK_SECRET`, `KIWI_FRIEND_WEBHOOK_URL`, `KIWI_FRIEND_WEBHOOK_SECRET`.
 3. Set `NEXT_PUBLIC_CONVEX_URL` and `CONVEX_URL` to `https://flippant-swan-205.convex.cloud`. Create `CONVEX_DEPLOY_KEY` under Convex **Settings → Deploy Keys** and paste it on Vercel (see Persistence).
-4. Deploy. Open the URL, sign in, then point both Grok agents at `https://<your-app>/api/...`. Paste the CTO Grok routine webhook into `KIWI_CTO_WEBHOOK_URL` when ready.
+4. Deploy. Open the URL, sign in, then point both Grok agents at `https://<your-app>/api/...`. Paste the Kiwi Lead Grok routine webhook into `KIWI_CTO_WEBHOOK_URL` when ready.
 
 Set `KIWI_SHOW_TOKENS=0` if you do not want bot tokens rendered in Vishnu’s sidebar on production.

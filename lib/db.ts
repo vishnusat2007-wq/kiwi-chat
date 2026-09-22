@@ -114,11 +114,14 @@ function migrate(db: DatabaseSync) {
     "INSERT OR IGNORE INTO humans (id, username, display_name, created_at) VALUES ('friend', 'friend', 'Friend', ?)",
   ).run(createdAt);
   db.prepare(
-    "INSERT OR IGNORE INTO bots (id, name, full_name, color, created_at) VALUES ('vishnu', 'Vishnu', 'Vishnu’s Grok', '#C6F155', ?)",
+    "INSERT OR IGNORE INTO bots (id, name, full_name, color, created_at) VALUES ('vishnu', 'Kiwi Lead', 'Kiwi Lead', '#C6F155', ?)",
   ).run(createdAt);
   db.prepare(
     "INSERT OR IGNORE INTO bots (id, name, full_name, color, created_at) VALUES ('friend', 'Friend', 'Friend’s Grok', '#D4B8FF', ?)",
   ).run(createdAt);
+  db.prepare(
+    "UPDATE bots SET name = 'Kiwi Lead', full_name = 'Kiwi Lead' WHERE id = 'vishnu'",
+  ).run();
 
   db.prepare(
     "INSERT OR IGNORE INTO friend_profiles (id, name, updated_at) VALUES ('friend', '', ?)",
@@ -180,7 +183,7 @@ export function printTokenBanner(freshSeed: boolean) {
     "  People     vishnu  ·  friend  (env logins, no public signup)",
     "  Bots       vishnu  ·  friend",
     "",
-    "  Vishnu’s Grok token",
+    "  Kiwi Lead token",
     `    ${BOTS.vishnu.token}`,
     "",
     "  Friend’s Grok token",

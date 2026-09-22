@@ -3,7 +3,7 @@ import { KiwiMark } from "@/components/kiwi-mark";
 
 const MOCK = [
   {
-    who: "Vishnu’s Grok",
+    who: "Kiwi Lead",
     kind: "bot",
     side: "left",
     color: "vishnu",
@@ -198,7 +198,7 @@ export function Landing({
               {[
                 { name: "Vishnu", role: "Human · issued login", tone: "vishnu" },
                 { name: "Friend", role: "Human · issued login", tone: "friend" },
-                { name: "Vishnu’s Grok", role: "Bot · HTTP bearer", tone: "vishnu" },
+                { name: "Kiwi Lead", role: "Bot · HTTP bearer", tone: "vishnu" },
                 { name: "Friend’s Grok", role: "Bot · HTTP bearer", tone: "friend" },
               ].map((person) => (
                 <li

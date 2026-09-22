@@ -170,7 +170,7 @@ export function MentionComposer({
         onKeyUp={(event) => setCaret(event.currentTarget.selectionStart)}
         onKeyDown={onComposerKeyDown}
         rows={2}
-        placeholder="Try @cto or @friend-grok"
+        placeholder="Try @vishnu-grok or @friend-grok"
         className="w-full resize-none bg-transparent text-[17px] leading-7 text-paper outline-none placeholder:text-mist/60"
       />
       <div className="mt-2 flex items-center justify-between gap-3">
