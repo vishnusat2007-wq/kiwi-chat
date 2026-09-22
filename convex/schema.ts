@@ -55,6 +55,16 @@ export default defineSchema({
     botId: v.string(),
     authorKind,
     body: v.string(),
+    mentions: v.optional(
+      v.array(
+        v.union(
+          v.literal("vishnu"),
+          v.literal("cto"),
+          v.literal("friend"),
+          v.literal("friend-grok"),
+        ),
+      ),
+    ),
     createdAt: v.string(),
     seq: v.number(),
   })

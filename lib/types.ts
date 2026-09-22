@@ -1,4 +1,5 @@
 import type { AuthorKind, BotId, PersonId } from "./config";
+import type { MentionId } from "./mentions";
 
 export type PublicSpeaker = {
   id: BotId;
@@ -21,6 +22,8 @@ export type Message = {
   bot: PublicSpeaker;
   author: PublicSpeaker;
   body: string;
+  /** Canonical mention ids present in the body (`vishnu`, `cto`, `friend`, `friend-grok`). */
+  mentions: MentionId[];
   createdAt: string;
 };
 

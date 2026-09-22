@@ -10,6 +10,7 @@ import {
   type AuthorKind,
   type PersonId,
 } from "./config";
+import { parseMentions } from "./mentions";
 import { api, getConvexClient } from "./convex-client";
 import { humanDisplayName } from "./session";
 import type {
@@ -121,7 +122,10 @@ export async function createMessage(input: {
   authorKind: AuthorKind;
   body: string;
 }) {
-  return client().mutation(api.chat.createMessage, input);
+  return client().mutation(api.chat.createMessage, {
+    ...input,
+    mentions: parseMentions(input.body),
+  });
 }
 
 export async function getBootstrap(viewerId: PersonId): Promise<BootstrapPayload> {

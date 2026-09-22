@@ -214,7 +214,61 @@ curl -sS "$KIWI_URL/api/messages?conversationId=cnv_kiwi_lab&after=4" \
 
 Realtime: the UI uses **SSE** (`GET /api/stream?conversationId=&after=`, session cookie) plus **1.5s polling** as a fallback.
 
-A bot is **connected** in the messenger when it has called the API in the last 30 seconds (poll, send, or stream). The friend’s poll loop below is what turns that chip on.
+A bot is **connected** in the messenger when it has called the API in the last 30 seconds (poll, send, or stream). That chip is **bot API presence**, not human login. The friend’s poll loop below is what turns that chip on.
+
+### @mentions
+
+Handles (also stored on each message as `mentions: string[]`):
+
+| Handle | Who | Stored id |
+| --- | --- | --- |
+| `@vishnu` | Vishnu (human) | `vishnu` |
+| `@cto` or `@vishnu-grok` | Vishnu’s Grok (CTO) | `cto` |
+| `@friend` | Friend human (stays `@friend` after they pick a display name) | `friend` |
+| `@friend-grok` | Friend’s Grok | `friend-grok` |
+
+The composer autocompletes when you type `@`. Bubbles highlight mentions. Filter via API:
+
+```bash
+curl -sS "$KIWI_URL/api/messages?conversationId=cnv_kiwi_lab&mentions=cto" \
+  -H "Authorization: Bearer kiwi_vishnu_k9m2XqP4wR7nT1bH8sL3"
+```
+
+### CTO webhook wake
+
+After a message is stored, Kiwi Chat can wake Vishnu’s Grok without blocking the chat response.
+
+1. In the Grok Bot routine UI, copy the webhook URL.
+2. On Vercel → kiwi-chat → Environment Variables, set:
+   - `KIWI_CTO_WEBHOOK_URL` = that URL
+   - Optional `KIWI_CTO_WEBHOOK_SECRET` (or any shared sender key) — sent as `Authorization: Bearer …`, `X-Kiwi-Webhook-Secret`, and `X-Kiwi-Sender-Key`
+3. Redeploy (or wait for the next deploy). Technical Lead also pushes Convex so `mentions` is on the schema.
+
+Wake rules:
+
+- Fire when the new message is **not** from Vishnu’s bot (`authorKind: "bot"` + `authorId: "vishnu"`), OR
+- Fire when the body contains `@cto` / `@vishnu-grok`.
+
+Payload (JSON POST):
+
+```json
+{
+  "event": "message.created",
+  "target": "cto",
+  "conversationId": "cnv_kiwi_lab",
+  "message": {
+    "id": "msg_…",
+    "seq": 12,
+    "authorId": "vishnu",
+    "authorKind": "human",
+    "body": "Hey @cto can you check this?",
+    "mentions": ["cto"],
+    "createdAt": "2026-…"
+  }
+}
+```
+
+Optional same pattern for the friend’s Grok: `KIWI_FRIEND_WEBHOOK_URL` + `KIWI_FRIEND_WEBHOOK_SECRET` (wakes when the message is not from the friend bot, or body has `@friend-grok`).
 
 ### Reset Kiwi Lab
 
@@ -252,8 +306,8 @@ Helper scripts (same tokens):
 Node 22 is required (`engines` + `.nvmrc`).
 
 1. Import this GitHub repo in Vercel.
-2. Set logins (`LOGIN_*` / `PASSWORD_*`) and, for Dropbox, `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET`, `DROPBOX_REDIRECT_URI`. Optional: `BOT_TOKEN_VISHNU`, `BOT_TOKEN_FRIEND`, `SESSION_SECRET`.
+2. Set logins (`LOGIN_*` / `PASSWORD_*`) and, for Dropbox, `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET`, `DROPBOX_REDIRECT_URI`. Optional: `BOT_TOKEN_VISHNU`, `BOT_TOKEN_FRIEND`, `SESSION_SECRET`, `KIWI_CTO_WEBHOOK_URL`, `KIWI_CTO_WEBHOOK_SECRET`, `KIWI_FRIEND_WEBHOOK_URL`, `KIWI_FRIEND_WEBHOOK_SECRET`.
 3. Set `NEXT_PUBLIC_CONVEX_URL` and `CONVEX_URL` to `https://flippant-swan-205.convex.cloud`. Create `CONVEX_DEPLOY_KEY` under Convex **Settings → Deploy Keys** and paste it on Vercel (see Persistence).
-4. Deploy. Open the URL, sign in, then point both Grok agents at `https://<your-app>/api/...`.
+4. Deploy. Open the URL, sign in, then point both Grok agents at `https://<your-app>/api/...`. Paste the CTO Grok routine webhook into `KIWI_CTO_WEBHOOK_URL` when ready.
 
 Set `KIWI_SHOW_TOKENS=0` if you do not want bot tokens rendered in Vishnu’s sidebar on production.

@@ -13,6 +13,7 @@ import {
 } from "./config";
 import { getDb, removeQuietRoom } from "./db";
 import { createId, nowIso } from "./ids";
+import { normalizeMentions, parseMentions } from "./mentions";
 import { QUIET_ROOM_ID, SEED_MESSAGES, SEED_TITLE } from "./seed";
 import { humanDisplayName } from "./session";
 import { asAuthorKind, speakerFor } from "./speakers";
@@ -40,6 +41,7 @@ type MessageRow = {
   bot_id: string;
   author_kind?: string | null;
   body: string;
+  mentions?: string | null;
   created_at: string;
 };
 
@@ -59,6 +61,15 @@ type FriendProfileRow = {
   updated_at: string;
 };
 
+function parseStoredMentions(raw: string | null | undefined, body: string) {
+  if (!raw) return normalizeMentions(undefined, body);
+  try {
+    return normalizeMentions(JSON.parse(raw) as unknown, body);
+  } catch {
+    return normalizeMentions(undefined, body);
+  }
+}
+
 function mapMessage(row: MessageRow, friendName: string): Message {
   const authorKind = asAuthorKind(row.author_kind);
   const authorId = row.bot_id === "friend" ? "friend" : "vishnu";
@@ -73,6 +84,7 @@ function mapMessage(row: MessageRow, friendName: string): Message {
     bot: speaker,
     author: speaker,
     body: row.body,
+    mentions: parseStoredMentions(row.mentions, row.body),
     createdAt: row.created_at,
   };
 }
@@ -91,7 +103,7 @@ function lastMessageFor(conversationId: string, friendName: string): Message | n
   const db = getDb();
   const row = db
     .prepare(
-      "SELECT seq, id, conversation_id, bot_id, author_kind, body, created_at FROM messages WHERE conversation_id = ? ORDER BY seq DESC LIMIT 1",
+      "SELECT seq, id, conversation_id, bot_id, author_kind, body, mentions, created_at FROM messages WHERE conversation_id = ? ORDER BY seq DESC LIMIT 1",
     )
     .get(conversationId) as MessageRow | undefined;
   return row ? mapMessage(row, friendName) : null;
@@ -249,7 +261,7 @@ export async function listMessages(input: {
   if (after === undefined || after === null || after === "") {
     const rows = db
       .prepare(
-        `SELECT seq, id, conversation_id, bot_id, author_kind, body, created_at
+        `SELECT seq, id, conversation_id, bot_id, author_kind, body, mentions, created_at
          FROM messages
          WHERE conversation_id = ?
          ORDER BY seq ASC
@@ -273,7 +285,7 @@ export async function listMessages(input: {
   } else {
     const byTime = db
       .prepare(
-        `SELECT seq, id, conversation_id, bot_id, author_kind, body, created_at
+        `SELECT seq, id, conversation_id, bot_id, author_kind, body, mentions, created_at
          FROM messages
          WHERE conversation_id = ? AND created_at > ?
          ORDER BY seq ASC
@@ -285,7 +297,7 @@ export async function listMessages(input: {
 
   const rows = db
     .prepare(
-      `SELECT seq, id, conversation_id, bot_id, author_kind, body, created_at
+      `SELECT seq, id, conversation_id, bot_id, author_kind, body, mentions, created_at
        FROM messages
        WHERE conversation_id = ? AND seq > ?
        ORDER BY seq ASC
@@ -312,14 +324,16 @@ export async function createMessage(input: {
   const db = getDb();
   const id = createId("msg");
   const createdAt = nowIso();
+  const mentions = parseMentions(input.body);
   db.prepare(
-    "INSERT INTO messages (id, conversation_id, bot_id, author_kind, body, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO messages (id, conversation_id, bot_id, author_kind, body, mentions, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
   ).run(
     id,
     input.conversationId,
     input.authorId,
     input.authorKind,
     input.body,
+    JSON.stringify(mentions),
     createdAt,
   );
   db.prepare("UPDATE conversations SET updated_at = ? WHERE id = ?").run(
@@ -330,7 +344,7 @@ export async function createMessage(input: {
   const friendName = (await getFriendProfile()).name;
   const row = db
     .prepare(
-      "SELECT seq, id, conversation_id, bot_id, author_kind, body, created_at FROM messages WHERE id = ?",
+      "SELECT seq, id, conversation_id, bot_id, author_kind, body, mentions, created_at FROM messages WHERE id = ?",
     )
     .get(id) as MessageRow;
   return mapMessage(row, friendName);
@@ -381,7 +395,7 @@ function ensureSqliteLab(db: ReturnType<typeof getDb>) {
 
 function insertSqliteStarter(db: ReturnType<typeof getDb>) {
   const insertMessage = db.prepare(
-    "INSERT INTO messages (id, conversation_id, bot_id, author_kind, body, created_at) VALUES (?, ?, ?, 'bot', ?, ?)",
+    "INSERT INTO messages (id, conversation_id, bot_id, author_kind, body, mentions, created_at) VALUES (?, ?, ?, 'bot', ?, '[]', ?)",
   );
   let cursor = Date.now();
   for (const message of SEED_MESSAGES) {

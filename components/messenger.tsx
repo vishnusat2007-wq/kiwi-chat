@@ -2,9 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BotAvatar, StackedAvatars } from "@/components/avatar";
 import { KiwiMark } from "@/components/kiwi-mark";
+import { MentionComposer } from "@/components/mention-composer";
+import {
+  MessageBody,
+  messageIsMentionFor,
+} from "@/components/message-body";
 import {
   dayKey,
   formatClock,
@@ -400,13 +405,6 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
     }
   }
 
-  function onComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      void sendMessage();
-    }
-  }
-
   return (
     <div className="messenger-shell relative flex h-[100dvh] flex-col overflow-hidden">
       <div className="kiwi-noise" />
@@ -512,7 +510,11 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
             </div>
 
             <div className="kiwi-scroll max-h-[48%] shrink-0 overflow-y-auto border-t border-line px-4 py-4 pb-6">
-              <p className="kiwi-kicker mb-3">People & groks</p>
+              <p className="kiwi-kicker mb-1">Bot API presence</p>
+              <p className="mb-3 text-[12px] leading-5 text-mist">
+                Connected = that Grok hit the HTTP API in the last ~30s (bearer
+                poll/send). Not human login.
+              </p>
               <div className="space-y-2">
                 {bootstrap.bots.map((bot) => {
                   const connected = connectedById.get(bot.id) === true;
@@ -568,19 +570,24 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                 href="/profile"
                 className="mt-5 block rounded-[24px] border border-line-strong bg-bg-0 p-4 hover:bg-bg-2"
               >
-                <p className="kiwi-kicker">Friend setup</p>
+                <p className="kiwi-kicker">Friend human profile</p>
                 <p className="mt-2 font-display text-[26px] leading-none text-paper">
-                  {bootstrap.friendProfile.name || "Name not set yet"}
+                  {bootstrap.friendProfile.name ||
+                    "Friend hasn’t set their display name yet"}
                 </p>
-                <p className="mt-2 text-[13px] text-mist">
-                  Dropbox{" "}
+                <p className="mt-2 text-[13px] leading-5 text-mist">
+                  After they log in as <code className="text-kiwi">friend</code>
                   {bootstrap.friendProfile.dropbox.connected
-                    ? `connected${
+                    ? ` · Dropbox linked${
                         bootstrap.friendProfile.dropbox.email
-                          ? ` · ${bootstrap.friendProfile.dropbox.email}`
+                          ? ` (${bootstrap.friendProfile.dropbox.email})`
                           : ""
                       }`
-                    : "not connected"}
+                    : " · Dropbox not linked yet"}
+                </p>
+                <p className="mt-2 text-[12px] leading-5 text-mist">
+                  Their Grok connects via HTTP token (see{" "}
+                  <span className="text-kiwi">/friend-bot</span>).
                 </p>
                 {needsFriendSetup ? (
                   <p className="mt-3 text-[13px] font-medium text-kiwi">
@@ -731,6 +738,9 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                               message.authorKind === "human" &&
                               message.authorId === viewerId;
                             const label = speakerLabel(message);
+                            const mentionedYou =
+                              !isRight &&
+                              messageIsMentionFor(message, viewerId);
                             const bubble =
                               isRight
                                 ? "bubble-right bubble-mine"
@@ -783,19 +793,32 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                                         >
                                           {kindLabel}
                                         </span>
+                                        {mentionedYou ? (
+                                          <span className="kind-pill kind-pill-mention">
+                                            Mentioned you
+                                          </span>
+                                        ) : null}
                                         <span className="text-[11px] text-mist">
                                           {formatClock(message.createdAt)}
                                         </span>
                                       </div>
                                     )}
                                     <div
-                                      className={`max-w-full rounded-[26px] px-4 py-3.5 text-[16.5px] leading-6 ${bubble} ${
+                                      className={`max-w-full rounded-[26px] px-4 py-3.5 text-left text-[16.5px] leading-6 ${bubble} ${
                                         flashIds.has(message.id)
                                           ? "ring-1 ring-kiwi/60"
                                           : ""
+                                      } ${
+                                        mentionedYou
+                                          ? "ring-1 ring-[rgba(212,184,255,0.55)]"
+                                          : ""
                                       }`}
                                     >
-                                      {message.body}
+                                      <MessageBody
+                                        body={message.body}
+                                        mentions={message.mentions}
+                                        highlightForViewer={mentionedYou}
+                                      />
                                     </div>
                                   </div>
                                 </div>
@@ -810,43 +833,13 @@ export function Messenger({ bootstrap }: { bootstrap: BootstrapPayload }) {
                 </div>
 
                 <footer className="composer-dock shrink-0 border-t border-line px-4 py-4 md:px-7">
-                  <form
+                  <MentionComposer
+                    value={draft}
+                    onChange={setDraft}
                     onSubmit={(event) => void sendMessage(event)}
-                    className="composer-card rounded-[30px] px-5 py-4"
-                  >
-                    <label className="sr-only" htmlFor="message-draft">
-                      Message
-                    </label>
-                    <textarea
-                      id="message-draft"
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={onComposerKeyDown}
-                      rows={2}
-                      placeholder="Ask the groks how the project is going."
-                      className="w-full resize-none bg-transparent text-[17px] leading-7 text-paper outline-none placeholder:text-mist/60"
-                    />
-                    <div className="mt-2 flex items-center justify-between gap-3">
-                      <p className="min-w-0 truncate text-[13px] font-medium text-mist">
-                        {sendError ?? "Enter to send · Shift+Enter for a new line"}
-                      </p>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <Link
-                          href="/friend-bot"
-                          className="rounded-full border border-line px-3 py-2 text-[12px] font-bold text-mist hover:text-paper"
-                        >
-                          Grok setup
-                        </Link>
-                        <button
-                          type="submit"
-                          disabled={sending || !draft.trim()}
-                          className="kiwi-btn rounded-full px-5 py-2.5 text-[14px] disabled:opacity-50"
-                        >
-                          {sending ? "Sending…" : "Send"}
-                        </button>
-                      </div>
-                    </div>
-                  </form>
+                    disabled={sending}
+                    sendError={sendError}
+                  />
                 </footer>
               </>
             ) : (

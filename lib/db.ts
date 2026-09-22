@@ -101,6 +101,7 @@ function migrate(db: DatabaseSync) {
   `);
 
   ensureColumn(db, "messages", "author_kind", "TEXT NOT NULL DEFAULT 'bot'");
+  ensureColumn(db, "messages", "mentions", "TEXT NOT NULL DEFAULT '[]'");
 
   ensureColumn(db, "bots", "last_seen_at", "TEXT");
   removeQuietRoom(db);
@@ -138,7 +139,7 @@ function seedIfEmpty(db: DatabaseSync) {
     "INSERT INTO conversation_members (conversation_id, bot_id) VALUES (?, ?)",
   );
   const insertMessage = db.prepare(
-    "INSERT INTO messages (id, conversation_id, bot_id, author_kind, body, created_at) VALUES (?, ?, ?, 'bot', ?, ?)",
+    "INSERT INTO messages (id, conversation_id, bot_id, author_kind, body, mentions, created_at) VALUES (?, ?, ?, 'bot', ?, '[]', ?)",
   );
 
   insertConversation.run(
