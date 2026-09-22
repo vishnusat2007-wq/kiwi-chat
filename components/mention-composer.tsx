@@ -3,7 +3,6 @@
 import {
   FormEvent,
   KeyboardEvent,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -38,7 +37,7 @@ export function MentionComposer({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [caret, setCaret] = useState(0);
-  const [open, setOpen] = useState(false);
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const mention = useMemo(
@@ -49,11 +48,12 @@ export function MentionComposer({
     () => (mention ? filterMentionSuggestions(mention.query) : []),
     [mention],
   );
-
-  useEffect(() => {
-    setOpen(Boolean(mention && suggestions.length > 0));
-    setActiveIndex(0);
-  }, [mention, suggestions.length]);
+  const mentionKey = mention
+    ? `${mention.start}:${mention.query}`
+    : "";
+  const open = Boolean(
+    mention && suggestions.length > 0 && dismissedKey !== mentionKey,
+  );
 
   function applyMention(target: MentionTarget) {
     if (!mention || !textareaRef.current) return;
@@ -63,6 +63,8 @@ export function MentionComposer({
     const next = `${before}${insertion}${after}`;
     onChange(next);
     const nextCaret = before.length + insertion.length;
+    setDismissedKey(`${mention.start}:${target.handle}`);
+    setActiveIndex(0);
     requestAnimationFrame(() => {
       const node = textareaRef.current;
       if (!node) return;
@@ -70,7 +72,6 @@ export function MentionComposer({
       node.setSelectionRange(nextCaret, nextCaret);
       setCaret(nextCaret);
     });
-    setOpen(false);
   }
 
   function onComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -94,7 +95,7 @@ export function MentionComposer({
       }
       if (event.key === "Escape") {
         event.preventDefault();
-        setOpen(false);
+        setDismissedKey(mentionKey);
         return;
       }
     }
