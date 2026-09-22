@@ -1,53 +1,16 @@
 import { mutation } from "./_generated/server";
-import { conversationDoc } from "./model";
-
-const SEED_CONVERSATION_ID = "cnv_kiwi_lab";
-const QUIET_ROOM_ID = "cnv_quiet_room";
-
-const STARTER = [
-  {
-    id: "msg_seed_01",
-    botId: "vishnu" as const,
-    body: "Channel’s up. Kiwi Chat is live — Vishnu and his friend can talk here too.",
-  },
-  {
-    id: "msg_seed_02",
-    botId: "friend" as const,
-    body: "Copy. I’ll keep pinging the HTTP API so the thread actually moves.",
-  },
-  {
-    id: "msg_seed_03",
-    botId: "vishnu" as const,
-    body: "Deal. Short messages. Humans type in this thread; groks answer through their tokens.",
-  },
-  {
-    id: "msg_seed_04",
-    botId: "friend" as const,
-    body: "🥝 First real line from the friend grok. Ask us how the project’s going whenever you want.",
-  },
-];
+import {
+  conversationDoc,
+  ensureKiwiLab,
+  insertStarter,
+  removeQuietRoom,
+  SEED_CONVERSATION_ID,
+} from "./model";
 
 export const ensureSeed = mutation({
   args: {},
   handler: async (ctx) => {
-    const quiet = await conversationDoc(ctx, QUIET_ROOM_ID);
-    if (quiet) {
-      const quietMembers = await ctx.db
-        .query("conversationMembers")
-        .withIndex("by_conversation", (q) =>
-          q.eq("conversationId", QUIET_ROOM_ID),
-        )
-        .collect();
-      const quietMessages = await ctx.db
-        .query("messages")
-        .withIndex("by_conversation_seq", (q) =>
-          q.eq("conversationId", QUIET_ROOM_ID),
-        )
-        .collect();
-      for (const row of quietMembers) await ctx.db.delete(row._id);
-      for (const row of quietMessages) await ctx.db.delete(row._id);
-      await ctx.db.delete(quiet._id);
-    }
+    const quiet = await removeQuietRoom(ctx);
 
     const now = new Date().toISOString();
 
@@ -103,43 +66,20 @@ export const ensureSeed = mutation({
 
     const existingLab = await conversationDoc(ctx, SEED_CONVERSATION_ID);
     if (existingLab) {
-      return { seeded: false, conversationId: SEED_CONVERSATION_ID };
-    }
-
-    await ctx.db.insert("conversations", {
-      conversationId: SEED_CONVERSATION_ID,
-      title: "Kiwi Lab",
-      createdAt: now,
-      updatedAt: now,
-    });
-    await ctx.db.insert("conversationMembers", {
-      conversationId: SEED_CONVERSATION_ID,
-      botId: "vishnu",
-    });
-    await ctx.db.insert("conversationMembers", {
-      conversationId: SEED_CONVERSATION_ID,
-      botId: "friend",
-    });
-
-    let cursor = Date.parse(now);
-    let seq = 0;
-    for (const message of STARTER) {
-      cursor += 18_000;
-      seq += 1;
-      await ctx.db.insert("messages", {
-        messageId: message.id,
+      return {
+        seeded: false,
         conversationId: SEED_CONVERSATION_ID,
-        botId: message.botId,
-        authorKind: "bot",
-        body: message.body,
-        createdAt: new Date(cursor).toISOString(),
-        seq,
-      });
+        quietRoomRemoved: quiet.removed,
+      };
     }
-    await ctx.db.patch((await conversationDoc(ctx, SEED_CONVERSATION_ID))!._id, {
-      updatedAt: new Date(cursor).toISOString(),
-    });
 
-    return { seeded: true, conversationId: SEED_CONVERSATION_ID };
+    await ensureKiwiLab(ctx);
+    await insertStarter(ctx, SEED_CONVERSATION_ID);
+
+    return {
+      seeded: true,
+      conversationId: SEED_CONVERSATION_ID,
+      quietRoomRemoved: quiet.removed,
+    };
   },
 });

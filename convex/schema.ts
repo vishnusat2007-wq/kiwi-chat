@@ -18,6 +18,7 @@ export default defineSchema({
     fullName: v.string(),
     color: v.string(),
     createdAt: v.string(),
+    lastSeenAt: v.optional(v.string()),
   }).index("by_botId", ["botId"]),
 
   profiles: defineTable({

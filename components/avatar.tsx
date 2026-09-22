@@ -3,11 +3,11 @@ import type { PublicSpeaker } from "@/lib/types";
 export function BotAvatar({
   bot,
   size = "md",
-  showLive = false,
+  presence,
 }: {
   bot: PublicSpeaker;
   size?: "sm" | "md" | "lg";
-  showLive?: boolean;
+  presence?: "on" | "off";
 }) {
   const dim =
     size === "lg" ? "h-11 w-11 text-[15px]" : size === "sm" ? "h-8 w-8 text-[11px]" : "h-9 w-9 text-[13px]";
@@ -16,16 +16,20 @@ export function BotAvatar({
   return (
     <span className="relative inline-flex shrink-0">
       <span
-        className={`inline-flex ${dim} items-center justify-center rounded-full font-semibold text-[#0b120c] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_20px_rgba(0,0,0,0.35)] ${
-          human ? "ring-2 ring-paper/30" : ""
+        className={`inline-flex ${dim} items-center justify-center font-semibold text-[#0b120c] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_20px_rgba(0,0,0,0.35)] ${
+          human ? "rounded-full ring-2 ring-paper/80" : "rounded-[10px]"
         }`}
         style={{ background: bot.color }}
         aria-hidden="true"
       >
         {bot.initial}
       </span>
-      {showLive ? (
-        <span className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0c120e] bg-kiwi" />
+      {presence ? (
+        <span
+          className={`absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0c120e] ${
+            presence === "on" ? "bg-kiwi live-dot" : "bg-mist/40"
+          }`}
+        />
       ) : null}
     </span>
   );

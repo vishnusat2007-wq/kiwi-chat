@@ -71,6 +71,10 @@ export function requireActor(request: Request) {
   return { actor, error: null };
 }
 
+export function canResetChat(actor: Actor) {
+  return actor.id === "vishnu";
+}
+
 export function requireHuman(request: Request) {
   const human = readSessionFromRequest(request);
   if (!human) {

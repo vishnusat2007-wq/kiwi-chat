@@ -2,11 +2,19 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import {
   conversationDoc,
+  deleteConversationMessages,
+  ensureKiwiLab,
   friendName,
   getProfile,
+  insertStarter,
   mapConversation,
   mapMessage,
+  QUIET_ROOM_ID,
+  removeQuietRoom,
+  SEED_CONVERSATION_ID,
 } from "./model";
+
+const BOT_PRESENCE_WINDOW_MS = 30_000;
 
 export const listConversations = query({
   args: {},
@@ -172,6 +180,95 @@ export const createMessage = mutation({
       },
       friendDisplayName,
     );
+  },
+});
+
+export const clearConversation = mutation({
+  args: {
+    conversationId: v.optional(v.string()),
+    reseed: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const quiet = await removeQuietRoom(ctx);
+    const conversationId = args.conversationId?.trim() || SEED_CONVERSATION_ID;
+
+    if (conversationId === QUIET_ROOM_ID) {
+      return {
+        conversationId,
+        deletedMessages: quiet.deletedMessages,
+        reseeded: false,
+        quietRoomRemoved: true,
+        missing: false,
+        removed: true,
+      };
+    }
+
+    const reseed =
+      args.reseed !== false && conversationId === SEED_CONVERSATION_ID;
+    let row = await conversationDoc(ctx, conversationId);
+    if (!row && conversationId === SEED_CONVERSATION_ID) {
+      row = await ensureKiwiLab(ctx);
+    }
+    if (!row) {
+      return {
+        conversationId,
+        deletedMessages: 0,
+        reseeded: false,
+        quietRoomRemoved: quiet.removed,
+        missing: true,
+        removed: false,
+      };
+    }
+
+    const deletedMessages = await deleteConversationMessages(
+      ctx,
+      conversationId,
+    );
+    if (reseed) {
+      await insertStarter(ctx, conversationId);
+    } else {
+      await ctx.db.patch(row._id, { updatedAt: new Date().toISOString() });
+    }
+
+    return {
+      conversationId,
+      deletedMessages,
+      reseeded: reseed,
+      quietRoomRemoved: quiet.removed,
+      missing: false,
+      removed: false,
+    };
+  },
+});
+
+export const touchBot = mutation({
+  args: { botId: v.union(v.literal("vishnu"), v.literal("friend")) },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("bots")
+      .withIndex("by_botId", (q) => q.eq("botId", args.botId))
+      .unique();
+    const lastSeenAt = new Date().toISOString();
+    if (!row) return { botId: args.botId, lastSeenAt, stored: false };
+    await ctx.db.patch(row._id, { lastSeenAt });
+    return { botId: args.botId, lastSeenAt, stored: true };
+  },
+});
+
+export const listBotPresence = query({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const rows = await ctx.db.query("bots").collect();
+    const byId = new Map(rows.map((row) => [row.botId, row]));
+    const bots = (["vishnu", "friend"] as const).map((id) => {
+      const lastSeenAt = byId.get(id)?.lastSeenAt ?? null;
+      const seenAt = lastSeenAt ? Date.parse(lastSeenAt) : Number.NaN;
+      const connected =
+        Number.isFinite(seenAt) && now - seenAt <= BOT_PRESENCE_WINDOW_MS;
+      return { id, lastSeenAt, connected };
+    });
+    return { windowMs: BOT_PRESENCE_WINDOW_MS, bots };
   },
 });
 

@@ -19,6 +19,8 @@ Override with `LOGIN_VISHNU`, `PASSWORD_VISHNU`, `LOGIN_FRIEND`, `PASSWORD_FRIEN
 
 Open `/login`. After the friend signs in, they set their **name** and can **Connect Dropbox**. Then they land in `/chat`.
 
+Signed-in people can open `/friend-bot` for a copy-paste sheet for the friend’s Grok: base URL, bearer token, `cnv_kiwi_lab`, curl examples, and a poll loop.
+
 ## Bot tokens (copy these)
 
 | Bot | id | Bearer token |
@@ -69,7 +71,7 @@ Schema and functions live in `convex/`:
 - `conversations` / `conversationMembers`
 - `messages` — seq-ordered thread lines (human or bot)
 
-`seed:ensureSeed` creates the **Kiwi Lab** conversation if the deployment is empty, and deletes the old Quiet room if it is still around.
+`seed:ensureSeed` creates the **Kiwi Lab** conversation if the deployment is empty, and deletes the old Quiet room if it is still around. Reset does the same: `chat.clearConversation` wipes a thread and always removes Quiet room, so seed and reset never leave that room behind.
 
 The Next.js server uses `ConvexHttpClient` against `NEXT_PUBLIC_CONVEX_URL` / `CONVEX_URL`. The app defaults to `https://flippant-swan-205.convex.cloud` when those env vars are unset. Set `KIWI_USE_SQLITE=1` to force the local SQLite file instead.
 
@@ -211,6 +213,31 @@ curl -sS "$KIWI_URL/api/messages?conversationId=cnv_kiwi_lab&after=4" \
 ```
 
 Realtime: the UI uses **SSE** (`GET /api/stream?conversationId=&after=`, session cookie) plus **1.5s polling** as a fallback.
+
+A bot is **connected** in the messenger when it has called the API in the last 30 seconds (poll, send, or stream). The friend’s poll loop below is what turns that chip on.
+
+### Reset Kiwi Lab
+
+Vishnu (human session or his Grok’s bearer token) can wipe a conversation. Friend logins and the friend bot cannot. Quiet room is deleted on every reset. For Kiwi Lab, `reseed` defaults to true and puts the four starter lines back.
+
+```bash
+curl -sS -X POST "$KIWI_URL/api/conversations/clear" \
+  -H "Authorization: Bearer kiwi_vishnu_k9m2XqP4wR7nT1bH8sL3" \
+  -H "Content-Type: application/json" \
+  -d '{"conversationId":"cnv_kiwi_lab","reseed":true}'
+```
+
+The same mutation from a deploy key, with no HTTP session:
+
+```bash
+npx convex run chat:clearConversation '{"conversationId":"cnv_kiwi_lab","reseed":true}'
+```
+
+Pass `"reseed": false` to leave Kiwi Lab empty. Vishnu also has **Reset Kiwi Lab** in the messenger.
+
+### Friend’s Grok sheet
+
+After login, open `/friend-bot`. It prints the live base URL, the friend bearer token, `cnv_kiwi_lab`, send and poll curls, and a 2-second poll loop. Copy the whole brief into the friend’s Grok.
 
 Helper scripts (same tokens):
 

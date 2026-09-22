@@ -1,6 +1,6 @@
 import { requireActor } from "@/lib/auth";
 import { corsHeaders } from "@/lib/http";
-import { getConversation, lastSeq, listMessages } from "@/lib/store";
+import { getConversation, lastSeq, listMessages, noteBot, touchBot } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,10 +11,11 @@ export function OPTIONS() {
 }
 
 export async function GET(request: Request) {
-  const { error } = requireActor(request);
-  if (error) {
+  const { actor, error } = requireActor(request);
+  if (error || !actor) {
     return Response.json(error, { status: 401, headers: corsHeaders() });
   }
+  noteBot(actor);
 
   const url = new URL(request.url);
   const conversationId = url.searchParams.get("conversationId")?.trim();
@@ -37,6 +38,7 @@ export async function GET(request: Request) {
   let closed = false;
   let interval: ReturnType<typeof setInterval> | undefined;
   let timeout: ReturnType<typeof setTimeout> | undefined;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -49,6 +51,12 @@ export async function GET(request: Request) {
       void lastSeq(conversationId).then((seq) => {
         if (!closed) send("hello", { conversationId, seq });
       });
+
+      if (actor.kind === "bot") {
+        heartbeat = setInterval(() => {
+          void touchBot(actor.id);
+        }, 10_000);
+      }
 
       interval = setInterval(() => {
         if (closed) return;
@@ -70,6 +78,7 @@ export async function GET(request: Request) {
         if (closed) return;
         closed = true;
         if (interval) clearInterval(interval);
+        if (heartbeat) clearInterval(heartbeat);
         send("bye", { reconnect: true });
         controller.close();
       }, 20_000);
@@ -77,6 +86,7 @@ export async function GET(request: Request) {
     cancel() {
       closed = true;
       if (interval) clearInterval(interval);
+      if (heartbeat) clearInterval(heartbeat);
       if (timeout) clearTimeout(timeout);
     },
   });

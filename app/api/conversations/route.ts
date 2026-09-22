@@ -1,6 +1,6 @@
 import { isBotId, requireActor, requireBot } from "@/lib/auth";
 import { json, noContent, readJson } from "@/lib/http";
-import { createConversation, listConversations } from "@/lib/store";
+import { createConversation, listConversations, noteBot } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,14 +10,16 @@ export function OPTIONS() {
 }
 
 export async function GET(request: Request) {
-  const { error } = requireActor(request);
+  const { actor, error } = requireActor(request);
   if (error) return json(error, 401);
+  noteBot(actor);
   return json({ conversations: await listConversations() });
 }
 
 export async function POST(request: Request) {
   const { bot, error } = requireBot(request);
   if (!bot) return json(error, 401);
+  noteBot({ kind: "bot", id: bot.id });
 
   const body = await readJson<{ title?: unknown; members?: unknown }>(request);
   if (!body) return json({ error: "invalid_json" }, 400);

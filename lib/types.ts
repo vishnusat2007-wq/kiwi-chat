@@ -59,11 +59,33 @@ export type Viewer = {
   username: string;
 };
 
+export type BotPresence = {
+  id: BotId;
+  lastSeenAt: string | null;
+  connected: boolean;
+};
+
+export type BotPresenceSnapshot = {
+  windowMs: number;
+  bots: BotPresence[];
+};
+
+export type ClearConversationResult = {
+  conversationId: string;
+  deletedMessages: number;
+  reseeded: boolean;
+  quietRoomRemoved: boolean;
+  missing: boolean;
+  removed: boolean;
+};
+
 export type BootstrapPayload = {
   conversations: Conversation[];
   messages: Message[];
   activeConversationId: string | null;
+  seedConversationId: string;
   bots: PublicSpeaker[];
+  botPresence: BotPresence[];
   viewer: Viewer;
   friendProfile: FriendProfilePublic;
   dropboxConfigured: boolean;

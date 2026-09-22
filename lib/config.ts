@@ -75,6 +75,16 @@ export const HUMANS: Record<PersonId, HumanLogin> = {
 export const HUMAN_LIST = Object.values(HUMANS);
 
 export const SEED_CONVERSATION_ID = "cnv_kiwi_lab";
+
+/** A bot stays "connected" when it has polled or posted inside this window. */
+export const BOT_PRESENCE_WINDOW_MS = 30_000;
+
+export function botIsConnected(lastSeenAt: string | null, now = Date.now()) {
+  if (!lastSeenAt) return false;
+  const seen = Date.parse(lastSeenAt);
+  if (!Number.isFinite(seen)) return false;
+  return now - seen <= BOT_PRESENCE_WINDOW_MS;
+}
 export const SESSION_COOKIE = "kiwi_session";
 export const DROPBOX_STATE_COOKIE = "kiwi_dbx_state";
 export const DROPBOX_VERIFIER_COOKIE = "kiwi_dbx_verifier";
